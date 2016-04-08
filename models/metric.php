@@ -25,38 +25,57 @@
  * HUBzero is a registered trademark of Purdue University.
  *
  * @package   hubzero-cms
- * @author    Shawn Rice <zooley@purdue.edu>
  * @copyright Copyright 2005-2015 HUBzero Foundation, LLC.
  * @license   http://opensource.org/licenses/MIT MIT
  */
 
-// No direct access.
-defined('_HZEXEC_') or die();
+namespace Components\Wiki\Models;
 
-if ($this->page->param('mode', 'wiki') == 'knol' && !$this->page->param('hide_authors', 0))
+use Hubzero\Database\Relational;
+
+/**
+ * Wiki model for page metrics
+ */
+class Metric extends Relational
 {
-	$author = ($this->page->creator('name') ? $this->escape(stripslashes($this->page->creator('name'))) : Lang::txt('COM_WIKI_UNKNOWN'));
+	/**
+	 * The table namespace
+	 *
+	 * @var  string
+	 */
+	protected $namespace = 'wiki';
 
-	$auths = array();
-	$auths[] = ($this->page->creator('public') ? '<a href="' . Route::url($this->page->creator()->getLink()) . '">' . $author . '</a>' : $author);
-	foreach ($this->page->authors() as $auth)
+	/**
+	 * Default order by for model
+	 *
+	 * @var  string
+	 */
+	public $orderBy = 'page_id';
+
+	/**
+	 * Default order direction for select queries
+	 *
+	 * @var  string
+	 */
+	public $orderDir = 'asc';
+
+	/**
+	 * Fields and their validation criteria
+	 *
+	 * @var  array
+	 */
+	protected $rules = array(
+		'page_id' => 'positive|nonzero',
+		'scope'   => 'notempty'
+	);
+
+	/**
+	 * Defines a belongs to one relationship between task and liaison
+	 *
+	 * @return  object
+	 */
+	public function page()
 	{
-		if ($auth->get('user_id') == $this->page->get('created_by'))
-		{
-			continue;
-		}
-
-		$name = $this->escape(stripslashes($auth->get('name')));
-
-		$xprofile = \Hubzero\User\Profile::getInstance($auth->get('user_id'));
-		if (is_object($xprofile))
-		{
-			$name = ($xprofile->get('public') ? '<a href="' . Route::url($xprofile->getLink()) . '">' . $name . '</a>' : $name);
-		}
-
-		$auths[] = $name;
+		return $this->belongsToOne('Page', 'page_id');
 	}
-	?>
-	<p class="topic-authors"><?php echo Lang::txt('COM_WIKI_BY_AUTHORS', implode(', ', $auths)); ?></p>
-	<?php
 }

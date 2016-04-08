@@ -25,7 +25,6 @@
  * HUBzero is a registered trademark of Purdue University.
  *
  * @package   hubzero-cms
- * @author    Shawn Rice <zooley@purdue.edu>
  * @copyright Copyright 2005-2015 HUBzero Foundation, LLC.
  * @license   http://opensource.org/licenses/MIT MIT
  */
@@ -34,10 +33,11 @@ namespace Components\Wiki\Site\Controllers;
 
 use Hubzero\Component\SiteController;
 use Components\Wiki\Models\Book;
-use Components\Wiki\Models\Page as Article;
-use Components\Wiki\Models\Revision;
-use Components\Wiki\Helpers\Parser;
-use Components\Wiki\Tables;
+use Components\Wiki\Models\Page;
+use Components\Wiki\Models\Version;
+use Components\Wiki\Models\Author;
+use Components\Wiki\Models\Attachment;
+use Exception;
 use Pathway;
 use Request;
 use Event;
@@ -48,7 +48,7 @@ use Date;
 /**
  * Wiki controller class for pages
  */
-class Page extends SiteController
+class Pages extends SiteController
 {
 	/**
 	 * Book model
@@ -66,29 +66,28 @@ class Page extends SiteController
 	public function __construct($config=array())
 	{
 		$this->_base_path = dirname(__DIR__);
+
 		if (isset($config['base_path']))
 		{
 			$this->_base_path = $config['base_path'];
 		}
 
-		$this->_sub = false;
-		if (isset($config['sub']))
+		if (!isset($config['scope']))
 		{
-			$this->_sub = $config['sub'];
+			$config['scope'] = 'site';
 		}
 
-		$this->_group = false;
-		if (isset($config['group']))
+		if (!isset($config['scope_id']))
 		{
-			$this->_group = $config['group'];
+			$config['scope_id'] = 0;
 		}
 
-		if ($this->_sub)
+		$this->book = new Book($config['scope'], $config['scope_id']);
+
+		if ($config['scope'] != 'site')
 		{
 			Request::setVar('task', Request::getWord('action'));
 		}
-
-		$this->book = new Book(($this->_group ? $this->_group : '__site__'));
 
 		parent::__construct($config);
 	}
@@ -100,24 +99,23 @@ class Page extends SiteController
 	 */
 	public function execute()
 	{
-		if (!$this->book->pages('count'))
+		/*if (!$this->book->pages('count'))
 		{
 			if ($result = $this->book->scribe($this->_option))
 			{
 				$this->setError($result);
 			}
 
-			App::get('config')->get('debug') || App::get('config')->get('profile') ? App::get('profiler')->mark('afterWikiSetup') : null;
-		}
+			//App::get('config')->get('debug') || App::get('config')->get('profile') ? App::get('profiler')->mark('afterWikiSetup') : null;
+		}*/
 
 		$this->page = $this->book->page();
 
-		if (in_array($this->page->get('namespace'), array('image', 'file')))
+		if (in_array($this->page->getNamespace(), array('image', 'file')))
 		{
 			App::redirect(
-				'index.php?option=' . $this->_option . '&controller=media&scope=' . $this->page->get('scope') . '&pagename=' . $this->page->get('pagename') . '&task=download'
+				Route::url('index.php?option=' . $this->_option . '&controller=media&scope=' . $this->page->get('scope') . '&pagename=' . $this->page->get('pagename') . '&task=download')
 			);
-			return;
 		}
 
 		parent::execute();
@@ -130,24 +128,13 @@ class Page extends SiteController
 	 */
 	public function displayTask()
 	{
-		$this->view->book      = $this->book;
-		$this->view->page      = $this->page;
-		$this->view->config    = $this->config;
-		$this->view->base_path = $this->_base_path;
-		$this->view->sub       = $this->_sub;
-
-		// Prep the pagename for display
-		$this->view->title = $this->page->get('title'); //getTitle();
-
 		// Set the page's <title> tag
-		if ($this->_sub)
+		if ($this->page->get('scope') == 'site')
 		{
-			Document::setTitle(Document::getTitle() . ': ' . $this->view->title);
+			Document::setTitle(Lang::txt('COM_WIKI'));
 		}
-		else
-		{
-			Document::setTitle(($this->_sub ? Lang::txt('COM_GROUPS') . ': ' : '') . Lang::txt('COM_WIKI') . ': ' . $this->view->title);
-		}
+
+		Document::setTitle(Document::getTitle() . ': ' . $this->page->title);
 
 		// Set the pathway
 		if (Pathway::count() <= 0)
@@ -159,65 +146,47 @@ class Page extends SiteController
 		}
 
 		// Is this a special page?
-		if ($this->page->get('namespace') == 'special')
+		if ($this->page->getNamespace() == 'special')
 		{
-			// Set the layout
-			$this->view->setLayout('special');
-			$this->view->layout = $this->page->denamespaced();
-			$this->view->page->set('scope', Request::getVar('scope', ''));
-			$this->view->page->set('group_cn', $this->_group);
-			$this->view->message = $this->_message;
-
 			// Ensure the special page exists
-			if (!in_array(strtolower($this->view->layout), $this->book->special()))
+			if (!in_array(strtolower($this->page->stripNamespace()), $this->book->special()))
 			{
-				App::redirect(
-					Route::url('index.php?option=' . $this->_option . '&scope=' . $this->view->page->get('scope'))
-				);
-				return;
+				App::abort(404, Lang::txt('COM_WIKI_WARNING_PAGE_DOES_NOT_EXIST'));
 			}
 
-			foreach ($this->getErrors() as $error)
-			{
-				$this->view->setError($error);
-			}
-
-			$this->view->display();
+			$this->view
+				->setLayout('special')
+				->set('layout', $this->page->stripNamespace())
+				->set('page', $this->page)
+				->set('book', $this->book)
+				->set('sub', $this->page->get('scope') != 'site')
+				->display();
 			return;
 		}
 
 		// Does a page exist for the given pagename?
-		if (!$this->page->exists() || $this->page->isDeleted())
+		if ($this->page->isNew() || $this->page->isDeleted())
 		{
 			if (!$this->page->access('create'))
 			{
 				App::abort(404, Lang::txt('COM_WIKI_WARNING_PAGE_DOES_NOT_EXIST'));
 			}
 
-			// No! Ask if they want to create a new page
-			$this->view->setLayout('doesnotexist');
-			if ($this->_group)
-			{
-				$this->page->set('group_cn', $this->_group);
-				$this->page->set('scope', $this->_group . '/wiki');
-			}
-
-			foreach ($this->getErrors() as $error)
-			{
-				$this->view->setError($error);
-			}
-
-			$this->view->display();
+			$this->view
+				->set('page', $this->page)
+				->set('book', $this->book)
+				->set('sub', $this->page->get('scope') != 'site')
+				->setLayout('doesnotexist')
+				->display();
 			return;
 		}
 
-		if ($this->page->get('group_cn') && !$this->_group)
+		/*if ($this->page->get('scope') != $this->book->get('scope'))
 		{
 			App::redirect(
-				Route::url('index.php?option=com_groups&scope=' . $this->page->get('scope') . '&pagename=' . $this->page->get('pagename'))
+				Route::url($this->page->link())
 			);
-			return;
-		}
+		}*/
 
 		// Check if the page is group restricted and the user is authorized
 		if (!$this->page->access('view', 'page'))
@@ -226,126 +195,94 @@ class Page extends SiteController
 		}
 
 		$parents = array();
-		if ($scope = $this->page->get('scope'))
+
+		if ($this->page->get('parent'))
 		{
-			$s = array();
-			if ($cn = $this->page->get('group_cn'))
+			$parents = $this->page->ancestors();
+
+			foreach ($parents as $p)
 			{
-				$scope = substr($scope, strlen($cn . '/wiki'));
-				$s[] = $cn;
-				$s[] = 'wiki';
-			}
-			$scope = trim($scope, '/');
-			if ($scope)
-			{
-				$bits = explode('/', $scope);
-				foreach ($bits as $bit)
-				{
-					$bit = trim($bit);
-					if ($bit != '/' && $bit != '')
-					{
-						$p = Article::getInstance($bit, implode('/', $s));
-						if ($p->exists())
-						{
-							Pathway::append(
-								$p->get('title'),
-								$p->link()
-							);
-							$parents[] = $p;
-						}
-						$s[] = $bit;
-					}
-				}
+				Pathway::append(
+					$p->get('title'),
+					$p->link()
+				);
 			}
 		}
 
 		Pathway::append(
-			$this->view->title,
+			$this->page->title,
 			$this->page->link()
 		);
 
 		// Retrieve a specific version if given
-		$this->view->version  = Request::getInt('version', 0);
-		$this->view->revision = $this->page->revision($this->view->version);
-
-		if (!$this->view->revision->exists())
+		if ($version = Request::getInt('version', 0))
 		{
-			foreach ($this->getErrors() as $error)
-			{
-				$this->view->setError($error);
-			}
+			$revision = $this->page->versions()
+				->whereEquals('version', $version)
+				->row();
+		}
+		else
+		{
+			$revision = $this->page->version;
+		}
 
+		if (!$revision->get('id'))
+		{
 			$this->view
+				->set('page', $this->page)
+				->set('book', $this->book)
+				->set('sub', $this->page->get('scope') != 'site')
 				->setLayout('nosuchrevision')
 				->display();
 			return;
 		}
 
-		if (Request::getVar('format', '') == 'raw')
-		{
-			Request::setVar('no_html', 1);
-
-			echo nl2br($this->view->revision->get('pagetext'));
-			return;
-		}
-		elseif (Request::getVar('format', '') == 'printable')
-		{
-			echo $this->view->revision->get('pagehtml');
-			return;
-		}
-
-		// Load the wiki parser
-		$wikiconfig = array(
-			'option'   => $this->_option,
-			'scope'    => $this->page->get('scope'),
-			'pagename' => $this->page->get('pagename'),
-			'pageid'   => $this->page->get('id'),
-			'filepath' => '',
-			'domain'   => $this->page->get('group_cn')
-		);
-
-		$p = Parser::getInstance();
-
 		// Parse the text
 		if (intval($this->book->config('cache', 1)))
 		{
 			// Caching
-			if (!($rendered = Cache::get('wiki.r' . $this->view->revision->get('id'))))
+			if (!($rendered = Cache::get('wiki.r' . $revision->get('id'))))
 			{
-				$rendered = $p->parse($this->view->revision->get('pagetext'), $wikiconfig, true, true);
+				$rendered = $revision->content($this->page);
 
-				Cache::put('wiki.r' . $this->view->revision->get('id'), $rendered, intval($this->book->config('cache_time', 15)));
+				Cache::put('wiki.r' . $revision->get('id'), $rendered, intval($this->book->config('cache_time', 15)));
 			}
-			$this->view->revision->set('pagehtml', $rendered);
+			$revision->set('pagehtml', $rendered);
 		}
 		else
 		{
-			$this->view->revision->set('pagehtml', $p->parse($this->view->revision->get('pagetext'), $wikiconfig, true, true));
+			$revision->set('pagehtml', $revision->content($this->page));
 		}
 
-		App::get('config')->get('debug') || App::get('config')->get('profile') ? App::get('profiler')->mark('afterWikiParse') : null;
+		//App::get('config')->get('debug') || App::get('config')->get('profile') ? App::get('profiler')->mark('afterWikiParse') : null;
 
 		// Handle display events
-		$this->page->event = new \stdClass();
+		$event = new \stdClass();
 
-		$results = Event::trigger('wiki.onAfterDisplayTitle', array($this->page, &$this->view->revision, $this->config));
-		$this->page->event->afterDisplayTitle = trim(implode("\n", $results));
+		$results = Event::trigger('wiki.onAfterDisplayTitle', array($this->page, &$revision, $this->config));
+		$event->afterDisplayTitle = trim(implode("\n", $results));
 
-		$results = Event::trigger('wiki.onBeforeDisplayContent', array(&$this->page, &$this->view->revision, $this->config));
-		$this->page->event->beforeDisplayContent = trim(implode("\n", $results));
+		$results = Event::trigger('wiki.onBeforeDisplayContent', array(&$this->page, &$revision, $this->config));
+		$event->beforeDisplayContent = trim(implode("\n", $results));
 
-		$results = Event::trigger('wiki.onAfterDisplayContent', array(&$this->page, &$this->view->revision, $this->config));
-		$this->page->event->afterDisplayContent = trim(implode("\n", $results));
+		$results = Event::trigger('wiki.onAfterDisplayContent', array(&$this->page, &$revision, $this->config));
+		$event->afterDisplayContent = trim(implode("\n", $results));
 
-		$this->view->message = $this->_message;
+		$this->page->set('event', $event);
 
-		foreach ($this->getErrors() as $error)
+		// Output view
+		if (Request::getVar('format') == 'raw')
 		{
-			$this->view->setError($error);
+			$this->view->setLayout('display_raw');
 		}
 
 		$this->view
+			->set('page', $this->page)
+			->set('revision', $revision)
 			->set('parents', $parents)
+			->set('sub', $this->page->get('scope') != 'site')
+			->set('base_path', $this->_base_path)
+			->setErrors($this->getErrors())
 			->display();
 	}
 
@@ -362,9 +299,10 @@ class Page extends SiteController
 	/**
 	 * Show a form for editing an entry
 	 *
+	 * @param   object  $revision
 	 * @return  void
 	 */
-	public function editTask()
+	public function editTask($revision = null)
 	{
 		// Check if they are logged in
 		if (User::isGuest())
@@ -373,21 +311,19 @@ class Page extends SiteController
 			App::redirect(
 				Route::url('index.php?option=com_users&view=login&return=' . base64_encode($url), false)
 			);
-			return;
 		}
 
 		// Check if the page is locked and the user is authorized
-		if ($this->page->get('state') == 1 && !$this->page->access('manage'))
+		if ($this->page->isLocked() && !$this->page->access('manage'))
 		{
 			App::redirect(
 				Route::url($this->page->link()),
 				Lang::txt('COM_WIKI_WARNING_NOT_AUTH_EDITOR'),
 				'warning'
 			);
-			return;
 		}
 
-		// Check if the page is group restricted and the user is authorized
+		// Check if the page is restricted and the user is authorized
 		if (!$this->page->access('edit') && !$this->page->access('modify'))
 		{
 			App::redirect(
@@ -395,10 +331,7 @@ class Page extends SiteController
 				Lang::txt('COM_WIKI_WARNING_NOT_AUTH_EDITOR'),
 				'warning'
 			);
-			return;
 		}
-
-		$this->view->setLayout('edit');
 
 		// Load the page
 		$ischild = false;
@@ -409,11 +342,11 @@ class Page extends SiteController
 		}
 
 		// Get the most recent version for editing
-		if (!is_object($this->revision))
+		if (!is_object($revision))
 		{
-			$this->revision = $this->page->revision('current'); //getCurrentRevision();
-			$this->revision->set('created_by', User::get('id'));
-			$this->revision->set('summary', '');
+			$revision = $this->page->version;
+			$revision->set('created_by', User::get('id'));
+			$revision->set('summary', '');
 		}
 
 		// If an existing page, pull its tags for editing
@@ -421,38 +354,33 @@ class Page extends SiteController
 		{
 			$this->page->set('access', 0);
 			$this->page->set('created_by', User::get('id'));
-
-			if ($this->_group)
-			{
-				$this->page->set('group_cn', $this->_group);
-				$this->page->set('scope', $this->_group . '/' . $this->_sub);
-			}
+			$this->page->set('scope', $this->book->get('scope'));
+			$this->page->set('scope_id', $this->book->get('scope_id'));
 
 			if ($ischild && $this->page->get('pagename'))
 			{
 				$this->revision->set('pagetext', '');
-				$this->page->set('scope', $this->page->get('scope') . ($this->page->get('scope') ? '/' . $this->page->get('pagename') : $this->page->get('pagename')));
+
+				$this->page->set('path', $this->page->get('path') . ($this->page->get('path') ? '/' : '') . $this->page->get('pagename'));
 				$this->page->set('pagename', '');
 				$this->page->set('title', Lang::txt('COM_WIKI_NEW_PAGE'));
 			}
 		}
 
-		$this->view->tags = trim(Request::getVar('tags', $this->page->tags('string'), 'post'));
-		$this->view->authors = trim(Request::getVar('authors', $this->page->authors('string'), 'post'));
-
-		// Prep the pagename for display
-		// e.g. "MainPage" becomes "Main Page"
-		$this->view->title = (trim($this->page->get('title')) ? $this->page->get('title') : Lang::txt('COM_WIKI_NEW_PAGE'));
+		$tags = trim(Request::getVar('tags', $this->page->tags('string'), 'post'));
+		//$authors = trim(Request::getVar('authors', $this->page->authors('string'), 'post'));
 
 		// Set the page's <title> tag
-		if ($this->_sub)
+		if ($this->page->get('scope') == 'site')
 		{
-			Document::setTitle(Document::getTitle() . ': ' . $this->view->title);
+			Document::setTitle(Lang::txt('COM_WIKI'));
 		}
-		else
-		{
-			Document::setTitle(Lang::txt(strtoupper($this->_option)) . ': ' . $this->view->title . ': ' . Lang::txt(strtoupper($this->_option . '_' . $this->_task)));
-		}
+
+		Document::setTitle(
+			Document::getTitle() . ': ' .
+			$this->page->title . ': ' .
+			Lang::txt(strtoupper($this->_option . '_' . $this->_task))
+		);
 
 		// Set the pathway
 		if (Pathway::count() <= 0)
@@ -462,25 +390,22 @@ class Page extends SiteController
 				'index.php?option=' . $this->_option . '&controller=' . $this->_controller
 			);
 		}
-		if (!$this->_sub)
-		{
-			Pathway::append(
-				$this->view->title,
-				$this->page->link()
-			);
-			Pathway::append(
-				Lang::txt(strtoupper($this->_option . '_' . $this->_task)),
-				$this->page->link() . '&task=' . $this->_task
-			);
-		}
+		Pathway::append(
+			$this->page->title,
+			$this->page->link()
+		);
+		Pathway::append(
+			Lang::txt(strtoupper($this->_option . '_' . $this->_task)),
+			$this->page->link() . '&task=' . $this->_task
+		);
 
-		$this->view->preview = NULL;
+		//$this->view->preview = NULL;
 
 		// Are we previewing?
 		if ($this->preview)
 		{
 			// Yes - get the preview so we can parse it and display
-			$this->view->preview = $this->preview;
+			//$this->view->preview = $this->preview;
 
 			$pageid = $this->page->get('id');
 			$lid = Request::getInt('lid', 0, 'post');
@@ -490,61 +415,67 @@ class Page extends SiteController
 			}
 
 			// Parse the HTML
-			$wikiconfig = array(
-				'option'   => $this->_option,
-				'scope'    => $this->page->get('scope'),
-				'pagename' => ($this->page->exists() ? $this->page->get('pagename') : 'Tmp:' . $pageid),
-				'pageid'   => $pageid,
-				'filepath' => '',
-				'domain'   => $this->_group
+			/*$wikiconfig = array(
+				'option'    => $this->_option,
+				'scope'     => $this->page->get('path'),
+				'pagename'  => ($this->page->exists() ? $this->page->get('pagename') : 'Tmp:' . $pageid),
+				'pageid'    => $pageid,
+				'filepath'  => '',
+				'domain'    => $this->page->get('scope'),
+				'domain_id' => $this->page->get('scope_id')
 			);
 
 			$p = Parser::getInstance();
 
-			$this->revision->set('pagehtml', $p->parse($this->revision->get('pagetext'), $wikiconfig, true, true));
+			$revision->set('pagehtml', $p->parse($revision->get('pagetext'), $wikiconfig, true, true));*/
+			$lid = Request::getInt('lid', 0, 'post');
+			$pagename = $this->page->get('pagename');
+
+			if ($lid != $this->page->get('id'))
+			{
+				$this->page->set('id', $lid);
+			}
+
+			$this->page->set('pagename', ($this->page->exists() ? $this->page->get('pagename') : 'Tmp:' . $pageid));
+
+			$revision->set('pagehtml', $revision->content($this->page));
+
+			$this->page->set('id', $pageid);
+			$this->page->set('pagename', $pagename);
 		}
 
-		$this->view->sub       = $this->_sub;
-		$this->view->base_path = $this->_base_path;
-		$this->view->message   = $this->_message;
-		$this->view->page      = $this->page;
-		$this->view->book      = $this->book;
-		$this->view->revision  = $this->revision;
-
 		// Pull a tree of pages in this wiki
-		$items = $this->book->pages('list', array(
-			'group'  => $this->_group,
-			'sortby' => 'pagename ASC, scope ASC',
-			'state'  => array(0, 1)
-		));
+		$items = $this->book->pages()
+			->whereEquals('state', Page::STATE_PUBLISHED)
+			->where('namespace', '!=', 'Template')
+			->order('pagename', 'asc')
+			->rows();
+
 		$tree = array();
 		if ($items)
 		{
 			foreach ($items as $k => $branch)
 			{
 				// Since these will be parent pages, we need to add the item's pagename to the scope
-				$branch->set('scope', ($branch->get('scope') ? $branch->get('scope') . '/' . $branch->get('pagename') : $branch->get('pagename')));
-				$branch->set('scopeName', $branch->get('scope'));
-				// Strip the group name from the beginning of the scope for display.
-				if ($this->_group)
-				{
-					$branch->set('scopeName', substr($branch->get('scope'), strlen($this->_group . '/wiki/')));
-				}
+				$branch->set('pagename', ($branch->get('path') ? $branch->get('path') . '/' : '') . $branch->get('pagename'));
+
 				// Push the item to the tree
-				$tree[$branch->get('scope')] = $branch;
+				$tree[$branch->get('pagename')] = $branch;
 			}
 			ksort($tree);
 		}
-		$this->view->tree = $tree; //$items;
 
-		$this->view->tplate = trim(Request::getVar('tplate', ''));
-
-		foreach ($this->getErrors() as $error)
-		{
-			$this->view->setError($error);
-		}
-
-		$this->view->display();
+		$this->view
+			->set('book', $this->book)
+			->set('page', $this->page)
+			->set('revision', $revision)
+			->set('sub', $this->page->get('scope') != 'site')
+			->set('tree', $tree)
+			->set('tags', $tags)
+			->set('preview', $this->preview)
+			->setErrors($this->getErrors())
+			->setLayout('edit')
+			->display();
 	}
 
 	/**
@@ -564,37 +495,23 @@ class Page extends SiteController
 			App::redirect(
 				Route::url('index.php?option=com_users&view=login&return=' . base64_encode($url), false)
 			);
-			return;
 		}
 
 		// Incoming revision
-		$rev = Request::getVar('revision', array(), 'post', 'none', 2);
 		//$rev['pageid'] = (isset($rev['pageid'])) ? intval($rev['pageid']) : 0;
 
-		$this->revision = $this->page->revision('current');
-		$this->revision->set('version', $this->revision->get('version') + 1);
-		if (!$this->revision->bind($rev))
-		{
-			$this->setError($this->revision->getError());
-			return $this->editTask();
-		}
-		$this->revision->set('id', 0);
+		$revision = $this->page->version;
+		$revision->set('version', $revision->get('version') + 1);
+		$revision->set(Request::getVar('revision', array(), 'post', 'none', 2));
+		$revision->set('id', 0);
 
 		// Incoming page
 		$page = Request::getVar('page', array(), 'post', 'none', 2);
 
-		$this->page = new Article(intval($rev['pageid']));
-		if (!$this->page->bind($page))
-		{
-			$this->setError($this->page->getError());
-			return $this->editTask();
-		}
+		$this->page = Page::oneOrNew(intval($revision->get('page_id')));
+		$this->page->set($page);
 		$this->page->set('pagename', trim(Request::getVar('pagename', '', 'post')));
-		$this->page->set('scope', trim(Request::getVar('scope', '', 'post')));
-		if (!isset($page['state']))
-		{
-			$this->page->set('state', 0);
-		}
+		//$this->page->set('scope', trim(Request::getVar('scope', '', 'post')));
 
 		// Get parameters
 		$params = new \Hubzero\Config\Registry($this->page->get('params', ''));
@@ -603,25 +520,26 @@ class Page extends SiteController
 		$this->page->set('params', $params->toString());
 
 		// Get the previous version to compare against
-		if (!$rev['pageid'])
+		if (!$revision->get('page_id'))
 		{
 			// New page - save it to the database
 			$this->page->set('created_by', User::get('id'));
 
-			$old = new Revision(0);
+			$old = Version::blank();
 		}
 		else
 		{
 			// Get the revision before changes
-			$old = $this->page->revision('current');
+			$old = $this->page->version;
 		}
 
 		// Was the preview button pushed?
 		$this->preview = trim(Request::getVar('preview', ''));
+
 		if ($this->preview)
 		{
 			// Set the component task
-			if (!$rev['pageid'])
+			if (!$page['id'])
 			{
 				Request::setVar('task', 'new');
 				$this->_task = 'new';
@@ -633,34 +551,33 @@ class Page extends SiteController
 			}
 
 			// Push on through to the edit form
-			return $this->editTask();
+			return $this->editTask($revision);
 		}
 
 		// Check content
 		// First, make sure the pagetext isn't empty
-		if ($this->revision->get('pagetext') == '')
+		if ($revision->get('pagetext') == '')
 		{
 			$this->setError(Lang::txt('COM_WIKI_ERROR_MISSING_PAGETEXT'));
-			return $this->editTask();
+			return $this->editTask($revision);
 		}
 
 		// Store new content
-		if (!$this->page->store(true))
+		if (!$this->page->save())
 		{
 			$this->setError($this->page->getError());
-			return $this->editTask();
+			return $this->editTask($revision);
 		}
 
 		// Get allowed authors
-		if (!$this->page->updateAuthors(Request::getVar('authors', '', 'post')))
+		if (!Author::setForPage(Request::getVar('authors', '', 'post'), $this->page->get('id')))
 		{
-			$this->setError($this->page->getError());
-			return $this->editTask();
+			$this->setError(Lang::txt('COM_WIKI_ERROR_SAVING_AUTHORS'));
+			return $this->editTask($revision);
 		}
 
 		// Get the upload path
-		$wpa = new Tables\Attachment($this->database);
-		$path = $wpa->filespace();
+		$path = Attachment::blank()->filespace();
 
 		// Rename the temporary upload directory if it exist
 		$lid = Request::getInt('lid', 0, 'post');
@@ -672,75 +589,68 @@ class Page extends SiteController
 				{
 					$this->setError(\Filesystem::move($path . DS . $lid, $path . DS . $this->page->get('id')));
 				}
-				$wpa->setPageID($lid, $this->page->get('id'));
+
+				foreach (Attachment::all()->whereEquals('page_id', $lid) as $attachment)
+				{
+					$attachment->set('page_id', $this->page->get('id'));
+					$attachment->save();
+				}
 			}
 		}
 
-		$this->revision->set('pageid',   $this->page->get('id'));
-		$this->revision->set('pagename', $this->page->get('pagename'));
-		$this->revision->set('scope',    $this->page->get('scope'));
-		$this->revision->set('group_cn', $this->page->get('group_cn'));
-		$this->revision->set('version',  $this->revision->get('version') + 1);
+		$revision->set('page_id', $this->page->get('id'));
+		$revision->set('version', $revision->get('version') + 1);
 
 		if ($this->page->param('mode', 'wiki') == 'knol')
 		{
 			// Set revisions to NOT approved
-			$this->revision->set('approved', 0);
+			$revision->set('approved', 0);
 			// If an author or the original page creator, set to approved
 			if ($this->page->get('created_by') == User::get('id')
 			 || $this->page->isAuthor(User::get('id')))
 			{
-				$this->revision->set('approved', 1);
+				$revision->set('approved', 1);
 			}
 		}
 		else
 		{
 			// Wiki mode, approve revision
-			$this->revision->set('approved', 1);
+			$revision->set('approved', 1);
 		}
 
 		// Compare against previous revision
 		// We don't want to create a whole new revision if just the tags were changed
-		if (rtrim($old->get('pagetext')) != rtrim($this->revision->get('pagetext')))
+		if (rtrim($old->get('pagetext')) != rtrim($revision->get('pagetext')))
 		{
 			// Transform the wikitext to HTML
-			$this->revision->set('pagehtml', '');
-			$this->revision->set('pagehtml', $this->revision->content('parsed'));
+			$revision->set('pagehtml', '');
+			$revision->set('pagehtml', $revision->content($this->page));
 
-			// Parse attachments
-			/*$a = new Tables\Attachment($this->database);
-			$a->pageid = $this->page->id;
-			$a->path = $path;
-
-			$this->revision->pagehtml = $a->parse($this->revision->pagehtml);*/
 			if ($this->page->access('manage') || $this->page->access('edit'))
 			{
-				$this->revision->set('approved', 1);
+				$revision->set('approved', 1);
 			}
 
 			// Store content
-			if (!$this->revision->store(true))
+			if (!$revision->save())
 			{
 				$this->setError(Lang::txt('COM_WIKI_ERROR_SAVING_REVISION'));
-				return $this->editTask();
+				return $this->editTask($revision);
 			}
 
-			if ($this->revision->get('approved'))
-			{
-				$this->page->set('version_id', $this->revision->get('id'));
-			}
-			$this->page->set('modified', $this->revision->get('created'));
+			$this->page->set('version_id', $revision->get('id'));
+			$this->page->set('modified', $revision->get('created'));
 		}
 		else
 		{
 			$this->page->set('modified', Date::toSql());
 		}
 
-		if (!$this->page->store(true))
+		if (!$this->page->save())
 		{
 			// This really shouldn't happen.
 			$this->setError(Lang::txt('COM_WIKI_ERROR_SAVING_PAGE'));
-			return $this->editTask();
+			return $this->editTask($revision);
 		}
 
 		// Process tags
@@ -750,26 +660,26 @@ class Page extends SiteController
 		$recipients = array(
 			['wiki.site', 1],
 			['user', $this->page->get('created_by')],
-			['user', $this->revision->get('created_by')]
+			['user', $revision->get('created_by')]
 		);
-		if ($this->page->get('group_cn'))
+		if ($this->page->get('scope') == 'group')
 		{
-			$group = \Hubzero\User\Group::getInstance($this->page->get('group_cn'));
+			$group = \Hubzero\User\Group::getInstance($this->page->get('scope_id'));
 			$recipients[]  = ['group', $group->get('gidNumber')];
 			$recipients[0] = ['wiki.group', $group->get('gidNumber')];
 		}
 
 		Event::trigger('system.logActivity', [
 			'activity' => [
-				'action'      => ($rev['pageid'] ? 'updated' : 'created'),
+				'action'      => ($page['id'] ? 'updated' : 'created'),
 				'scope'       => 'wiki.page',
 				'scope_id'    => $this->page->get('id'),
-				'description' => Lang::txt('COM_WIKI_ACTIVITY_PAGE_' . ($rev['pageid'] ? 'UPDATED' : 'CREATED'), '<a href="' . Route::url($this->page->link()) . '">' . $this->page->get('title') . '</a>'),
+				'description' => Lang::txt('COM_WIKI_ACTIVITY_PAGE_' . ($page['id'] ? 'UPDATED' : 'CREATED'), '<a href="' . Route::url($this->page->link()) . '">' . $this->page->title . '</a>'),
 				'details'     => array(
-					'title'    => $this->page->get('title'),
+					'title'    => $this->page->title,
 					'url'      => Route::url($this->page->link()),
 					'name'     => $this->page->get('pagename'),
-					'revision' => $this->revision->get('id')
+					'revision' => $revision->get('id')
 				)
 			],
 			'recipients' => $recipients
@@ -795,7 +705,6 @@ class Page extends SiteController
 			App::redirect(
 				Route::url('index.php?option=com_users&view=login&return=' . base64_encode($url), false)
 			);
-			return;
 		}
 
 		if (!is_object($this->page))
@@ -805,7 +714,6 @@ class Page extends SiteController
 				Lang::txt('COM_WIKI_ERROR_PAGE_NOT_FOUND'),
 				'error'
 			);
-			return;
 		}
 
 		// Make sure they're authorized to delete
@@ -816,7 +724,6 @@ class Page extends SiteController
 				Lang::txt('COM_WIKI_ERROR_NOTAUTH'),
 				'error'
 			);
-			return;
 		}
 
 		$confirmed = Request::getInt('confirm', 0, 'post');
@@ -827,11 +734,13 @@ class Page extends SiteController
 				// Check for request forgeries
 				Request::checkToken();
 
-				$this->page->set('state', 2);
-				if (!$this->page->store(false, 'page_removed'))
+				$this->page->set('state', \Components\Wiki\Models\Page::STATE_DELETED);
+				if (!$this->page->save())
 				{
 					$this->setError(Lang::txt('COM_WIKI_UNABLE_TO_DELETE'));
 				}
+
+				$this->page->log('page_removed');
 
 				Cache::clean('wiki');
 
@@ -840,9 +749,9 @@ class Page extends SiteController
 					['wiki.site', 1],
 					['user', $this->page->get('created_by')]
 				);
-				if ($this->page->get('group_cn'))
+				if ($this->page->get('scope') == 'group')
 				{
-					$group = \Hubzero\User\Group::getInstance($this->page->get('group_cn'));
+					$group = \Hubzero\User\Group::getInstance($this->page->get('scope_id'));
 					$recipients[]  = ['group', $group->get('gidNumber')];
 					$recipients[0] = ['wiki.group', $group->get('gidNumber')];
 				}
@@ -852,9 +761,9 @@ class Page extends SiteController
 						'action'      => 'deleted',
 						'scope'       => 'wiki.page',
 						'scope_id'    => $this->page->get('id'),
-						'description' => Lang::txt('COM_WIKI_ACTIVITY_PAGE_DELETED', '<a href="' . Route::url($this->page->link()) . '">' . $this->page->get('title') . '</a>'),
+						'description' => Lang::txt('COM_WIKI_ACTIVITY_PAGE_DELETED', '<a href="' . Route::url($this->page->link()) . '">' . $this->page->title . '</a>'),
 						'details'     => array(
-							'title' => $this->page->get('title'),
+							'title' => $this->page->title,
 							'url'   => Route::url($this->page->link()),
 							'name'  => $this->page->get('pagename')
 						)
@@ -864,17 +773,12 @@ class Page extends SiteController
 			break;
 
 			default:
-				$this->view->page      = $this->page;
-				$this->view->config    = $this->config;
-				$this->view->base_path = $this->_base_path;
-				$this->view->sub       = $this->_sub;
-
-				// Prep the pagename for display
-				// e.g. "MainPage" becomes "Main Page"
-				$this->view->title = $this->page->get('title');
-
 				// Set the page's <title> tag
-				Document::setTitle(Lang::txt(strtoupper($this->_option)) . ': ' . $this->view->title . ': ' . Lang::txt(strtoupper($this->_option . '_' . $this->_task)));
+				Document::setTitle(
+					Lang::txt(strtoupper($this->_option)) . ': ' .
+					$this->page->title . ': ' .
+					Lang::txt(strtoupper($this->_option . '_' . $this->_task))
+				);
 
 				// Set the pathway
 				if (Pathway::count() <= 0)
@@ -884,8 +788,24 @@ class Page extends SiteController
 						'index.php?option=' . $this->_option . '&controller=' . $this->_controller
 					);
 				}
+
+				$parents = array();
+
+				if ($this->page->get('parent'))
+				{
+					$parents = $this->page->ancestors();
+
+					foreach ($parents as $p)
+					{
+						Pathway::append(
+							$p->get('title'),
+							$p->link()
+						);
+					}
+				}
+
 				Pathway::append(
-					$this->view->title,
+					$this->page->title,
 					$this->page->link()
 				);
 				Pathway::append(
@@ -893,14 +813,14 @@ class Page extends SiteController
 					$this->page->link('delete')
 				);
 
-				$this->view->message = $this->_message;
-
-				foreach ($this->getErrors() as $error)
-				{
-					$this->view->setError($error);
-				}
-
-				$this->view->display();
+				$this->view
+					->set('book', $this->book)
+					->set('page', $this->page)
+					->set('base_path', $this->_base_path)
+					->set('parents', $parents)
+					->set('sub', $this->page->get('scope') != 'site')
+					->setErrors($this->getErrors())
+					->display();
 				return;
 			break;
 		}
@@ -924,7 +844,6 @@ class Page extends SiteController
 			App::redirect(
 				Route::url('index.php?option=com_users&view=login&return=' . base64_encode($url), false)
 			);
-			return;
 		}
 
 		// Make sure they're authorized to delete
@@ -935,20 +854,14 @@ class Page extends SiteController
 				Lang::txt('COM_WIKI_ERROR_NOTAUTH'),
 				'error'
 			);
-			return;
 		}
 
-		$this->view->page      = $this->page;
-		$this->view->config    = $this->config;
-		$this->view->base_path = $this->_base_path;
-		$this->view->sub       = $this->_sub;
-
-		// Prep the pagename for display
-		// e.g. "MainPage" becomes "Main Page"
-		$this->view->title = $this->page->get('title');
-
 		// Set the page's <title> tag
-		Document::setTitle(Lang::txt(strtoupper($this->_name)) . ': ' . $this->view->title . ': ' . Lang::txt('RENAME'));
+		Document::setTitle(
+			Lang::txt(strtoupper($this->_name)) . ': ' .
+			$this->page->title . ': ' .
+			Lang::txt('RENAME')
+		);
 
 		// Set the pathway
 		if (Pathway::count() <= 0)
@@ -958,8 +871,24 @@ class Page extends SiteController
 				'index.php?option=' . $this->_option
 			);
 		}
+
+		$parents = array();
+
+		if ($this->page->get('parent'))
+		{
+			$parents = $this->page->ancestors();
+
+			foreach ($parents as $p)
+			{
+				Pathway::append(
+					$p->get('title'),
+					$p->link()
+				);
+			}
+		}
+
 		Pathway::append(
-			$this->view->title,
+			$this->page->title,
 			$this->page->link()
 		);
 		Pathway::append(
@@ -967,16 +896,14 @@ class Page extends SiteController
 			$this->page->link('rename')
 		);
 
-		$this->view->message = $this->_message;
-
-		// Set any errors
-		foreach ($this->getErrors() as $error)
-		{
-			$this->view->setError($error);
-		}
-
 		// Output HTML
 		$this->view
+			->set('book', $this->book)
+			->set('page', $this->page)
+			->set('parents', $parents)
+			->set('base_path', $this->_base_path)
+			->set('sub', $this->page->get('scope') != 'site')
+			->setErrors($this->getErrors())
 			->setLayout('rename')
 			->display();
 	}
@@ -998,32 +925,59 @@ class Page extends SiteController
 			App::redirect(
 				Route::url('index.php?option=com_users&view=login&return=' . base64_encode($url), false)
 			);
-			return;
 		}
 
 		// Incoming
 		$oldpagename = trim(Request::getVar('oldpagename', '', 'post'));
 		$newpagename = trim(Request::getVar('newpagename', '', 'post'));
-		$scope       = trim(Request::getVar('scope', '', 'post'));
 
 		// Load the page
-		$this->page = new Article($oldpagename, $scope);
+		$this->page = Page::oneByPath($oldpagename, $this->book->get('scope'), $this->book->get('scope_id'));
 
-		// Attempt to rename
-		if (!$this->page->rename($newpagename))
+		$newpagename = $this->page->normalize($newpagename);
+
+		// Are they just changing case of characters?
+		if (strtolower($this->page->get('pagename')) == strtolower($newpagename))
+		{
+			$this->setError(Lang::txt('New name matches old name.'));
+			return $this->renameTask();
+		}
+
+		// Check that no other pages are using the new title
+		$p = Page::oneByPath($newpagename, $this->page->get('scope'), $this->page->get('scope_id'));
+		if ($p->exists())
+		{
+			$this->setError(Lang::txt('COM_WIKI_ERROR_PAGE_EXIST') . ' ' . Lang::txt('CHOOSE_ANOTHER_PAGENAME'));
+			return $this->renameTask();
+		}
+
+		$this->page->set('pagename', $newpagename);
+
+		if (!$this->page->save())
 		{
 			$this->setError($this->page->getError());
 			return $this->renameTask();
 		}
+
+		$pages = Page::all()
+			->whereEquals('parent', $this->page->get('id'))
+			->rows();
+
+		foreach ($pages as $page)
+		{
+			$page->save();
+		}
+
+		$this->page->log('page_renamed');
 
 		// Log activity
 		$recipients = array(
 			['wiki.site', 1],
 			['user', $this->page->get('created_by')]
 		);
-		if ($this->page->get('group_cn'))
+		if ($this->page->get('scope') == 'group')
 		{
-			$group = \Hubzero\User\Group::getInstance($this->page->get('group_cn'));
+			$group = \Hubzero\User\Group::getInstance($this->page->get('scope_id'));
 			$recipients[]  = ['group', $group->get('gidNumber')];
 			$recipients[0] = ['wiki.group', $group->get('gidNumber')];
 		}
@@ -1065,16 +1019,24 @@ class Page extends SiteController
 		}
 
 		// Retrieve a specific version if given
-		$this->view->revision = $this->page->revision(Request::getInt('version', 0));
-		if (!$this->view->revision->exists())
+		if ($version = Request::getInt('version', 0))
 		{
-			foreach ($this->getErrors() as $error)
-			{
-				$this->view->setError($error);
-			}
+			$revision = $this->page->versions()
+				->whereEquals('version', $version)
+				->whereEquals('approved', 1)
+				->row();
+		}
+		else
+		{
+			$revision = $this->page->version;
+		}
 
+		if (!$revision->exists())
+		{
 			$this->view
 				->set('page', $this->page)
+				->set('version', $version)
+				->set('sub', $this->page->get('scope') != 'site')
 				->setLayout('nosuchrevision')
 				->display();
 			return;
@@ -1085,9 +1047,9 @@ class Page extends SiteController
 			['wiki.site', 1],
 			['user', $this->page->get('created_by')]
 		);
-		if ($this->page->get('group_cn'))
+		if ($this->page->get('scope') == 'group')
 		{
-			$group = \Hubzero\User\Group::getInstance($this->page->get('group_cn'));
+			$group = \Hubzero\User\Group::getInstance($this->page->get('scope_id'));
 			$recipients[] = ['group', $group->get('gidNumber')];
 			$recipients[0] = ['wiki.group', $group->get('gidNumber')];
 		}
@@ -1097,9 +1059,9 @@ class Page extends SiteController
 				'action'      => 'downloaded',
 				'scope'       => 'wiki.page',
 				'scope_id'    => $this->page->get('id'),
-				'description' => Lang::txt('COM_WIKI_ACTIVITY_PAGE_DOWNLOADED', '<a href="' . Route::url($this->page->link()) . '">' . $this->page->get('title') . '</a>'),
+				'description' => Lang::txt('COM_WIKI_ACTIVITY_PAGE_DOWNLOADED', '<a href="' . Route::url($this->page->link()) . '">' . $this->page->title . '</a>'),
 				'details'     => array(
-					'title' => $this->page->get('title'),
+					'title' => $this->page->title,
 					'url'   => Route::url($this->page->link()),
 					'name'  => $this->page->get('pagename')
 				)
@@ -1129,32 +1091,22 @@ class Page extends SiteController
 		// Set font
 		$pdf->SetFont('dejavusans', '', 11, '', true);
 
-		$pdf->setAuthor  = $this->page->creator('name');
+		$pdf->setAuthor  = $this->page->creator()->get('name');
 		$pdf->setCreator = \Config::get('sitename');
 
 		$pdf->setDocModificationTimeStamp($this->page->modified());
-		$pdf->setHeaderData(NULL, 0, strtoupper($this->page->get('itle')), NULL, array(84, 94, 124), array(146, 152, 169));
+		$pdf->setHeaderData(NULL, 0, strtoupper($this->page->title), NULL, array(84, 94, 124), array(146, 152, 169));
 		$pdf->setFooterData(array(255, 255, 255), array(255, 255, 255));
 
 		$pdf->AddPage();
 
+		// Parse wiki content
+		$revision->set('pagehtml', $revision->content($this->page));
+
 		// Set the view page content to current revision html
-		$this->view->page = $this->page;
-
-		// Load the wiki parser
-		$wikiconfig = array(
-			'option'   => $this->_option,
-			'scope'    => $this->page->get('scope'),
-			'pagename' => $this->page->get('pagename'),
-			'pageid'   => $this->page->get('id'),
-			'filepath' => '',
-			'domain'   => $this->page->get('group_cn')
-		);
-
-		$p = Parser::getInstance();
-
-		// Parse the text
-		$this->view->revision->set('pagehtml', $p->parse($this->view->revision->get('pagetext'), $wikiconfig, true, true));
+		$this->view
+			->set('page', $this->page)
+			->set('revision', $revision);
 
 		$pdf->writeHTML($this->view->loadTemplate(), true, false, true, false, '');
 

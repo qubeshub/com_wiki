@@ -25,7 +25,6 @@
  * HUBzero is a registered trademark of Purdue University.
  *
  * @package   hubzero-cms
- * @author    Shawn Rice <zooley@purdue.edu>
  * @copyright Copyright 2005-2015 HUBzero Foundation, LLC.
  * @license   http://opensource.org/licenses/MIT MIT
  */
@@ -71,12 +70,12 @@ function submitbutton(pressbutton)
 
 				<div class="input-wrap">
 					<label for="field-summary"><?php echo Lang::txt('COM_WIKI_FIELD_EDIT_SUMMARY'); ?>:</label><br />
-					<input type="text" name="revision[summary]" id="field-summary" size="55" maxlength="255" value="<?php echo $this->escape(stripslashes($this->revision->get('summary'))); ?>" />
+					<input type="text" name="revision[summary]" id="field-summary" size="55" maxlength="255" value="<?php echo $this->escape(stripslashes($this->row->get('summary'))); ?>" />
 				</div>
 
 				<div class="input-wrap">
 					<label for="field-pagetext"><?php echo Lang::txt('COM_WIKI_FIELD_TEXT'); ?>:</label><br />
-					<textarea name="revision[pagetext]" id="field-pagetext" cols="50" rows="40"><?php echo $this->escape(stripslashes($this->revision->get('pagetext'))); ?></textarea>
+					<textarea name="revision[pagetext]" id="field-pagetext" cols="50" rows="40"><?php echo $this->escape(stripslashes($this->row->get('pagetext'))); ?></textarea>
 				</div>
 			</fieldset>
 		</div>
@@ -101,15 +100,15 @@ function submitbutton(pressbutton)
 					</tr>
 					<tr>
 						<th><?php echo Lang::txt('COM_WIKI_PAGE') . ' ' . Lang::txt('COM_WIKI_FIELD_ID'); ?>:</th>
-						<td><?php echo $this->escape($this->revision->get('pageid')); ?><input type="hidden" name="revision[pageid]" id="pageid" value="<?php echo $this->escape($this->revision->get('pageid')); ?>" /></td>
+						<td><?php echo $this->escape($this->row->get('pageid')); ?><input type="hidden" name="revision[pageid]" id="pageid" value="<?php echo $this->escape($this->row->get('pageid')); ?>" /></td>
 					</tr>
 					<tr>
 						<th><?php echo Lang::txt('COM_WIKI_FIELD_ID'); ?>:</th>
-						<td><?php echo $this->escape($this->revision->get('id')); ?><input type="hidden" name="revision[id]" id="revid" value="<?php echo $this->escape($this->revision->get('id')); ?>" /></td>
+						<td><?php echo $this->escape($this->row->get('id')); ?><input type="hidden" name="revision[id]" id="revid" value="<?php echo $this->escape($this->row->get('id')); ?>" /></td>
 					</tr>
 					<tr>
 						<th><?php echo Lang::txt('COM_WIKI_FIELD_REVISION'); ?>:</th>
-						<td><?php echo $this->escape($this->revision->get('version')); ?><input type="hidden" name="revision[version]" id="version" value="<?php echo $this->escape($this->revision->get('version')); ?>" /></td>
+						<td><?php echo $this->escape($this->row->get('version')); ?><input type="hidden" name="revision[version]" id="version" value="<?php echo $this->escape($this->row->get('version')); ?>" /></td>
 					</tr>
 				</tbody>
 			</table>
@@ -118,33 +117,33 @@ function submitbutton(pressbutton)
 				<legend><span><?php echo Lang::txt('COM_WIKI_FIELDSET_PARAMETERS'); ?></span></legend>
 
 				<div class="input-wrap">
-					<input type="checkbox" name="revision[minor_edit]" id="field-minor_edit" value="1" <?php echo $this->revision->get('minor_edit') ? 'checked="checked"' : ''; ?> />
+					<input type="checkbox" name="revision[minor_edit]" id="field-minor_edit" value="1" <?php echo $this->row->get('minor_edit') ? 'checked="checked"' : ''; ?> />
 					<label for="field-minor_edit"><?php echo Lang::txt('COM_WIKI_FIELD_MINOR_EDIT'); ?></label>
 				</div>
 
 				<div class="input-wrap">
 					<label for="field-approved"><?php echo Lang::txt('COM_WIKI_FIELD_STATE'); ?>:</label><br />
 					<select name="revision[approved]" id="field-approved">
-						<option value="0"<?php echo $this->revision->get('approved') == 0 ? ' selected="selected"' : ''; ?>><?php echo Lang::txt('COM_WIKI_STATE_NOT_APPROVED'); ?></option>
-						<option value="1"<?php echo $this->revision->get('approved') == 1 ? ' selected="selected"' : ''; ?>><?php echo Lang::txt('COM_WIKI_STATE_APPROVED'); ?></option>
-						<option value="2"<?php echo $this->revision->get('approved') == 2 ? ' selected="selected"' : ''; ?>><?php echo Lang::txt('COM_WIKI_STATE_TRASHED'); ?></option>
+						<option value="0"<?php echo $this->row->get('approved') == 0 ? ' selected="selected"' : ''; ?>><?php echo Lang::txt('COM_WIKI_STATE_NOT_APPROVED'); ?></option>
+						<option value="1"<?php echo $this->row->get('approved') == 1 ? ' selected="selected"' : ''; ?>><?php echo Lang::txt('COM_WIKI_STATE_APPROVED'); ?></option>
+						<option value="2"<?php echo $this->row->get('approved') == 2 ? ' selected="selected"' : ''; ?>><?php echo Lang::txt('COM_WIKI_STATE_TRASHED'); ?></option>
 					</select>
 				</div>
 
 				<div class="input-wrap">
 					<label><?php echo Lang::txt('COM_WIKI_FIELD_CREATOR'); ?>:</label><br />
-					<?php echo JHTML::_('list.users', 'created_by', $this->revision->get('created_by'), 0, '', 'name', 1); ?>
+					<?php //echo JHTML::_('list.users', 'created_by', $this->row->get('created_by'), 0, '', 'name', 1); ?>
 				</div>
 
 				<div class="input-wrap">
 					<label for="field-created"><?php echo Lang::txt('COM_WIKI_FIELD_CREATED'); ?>:</label><br />
-					<?php echo Html::input('calendar', 'revision[created]', $this->escape($this->revision->get('created')), array('id' => 'field-created')); ?>
+					<?php echo Html::input('calendar', 'revision[created]', $this->escape($this->row->get('created')), array('id' => 'field-created')); ?>
 				</div>
 			</fieldset>
 		</div>
 	</div>
 
-	<input type="hidden" name="pageid" value="<?php echo $this->revision->get('pageid'); ?>" />
+	<input type="hidden" name="page_id" value="<?php echo $this->row->get('page_id'); ?>" />
 	<input type="hidden" name="option" value="<?php echo $this->option; ?>" />
 	<input type="hidden" name="controller" value="<?php echo $this->controller; ?>" />
 	<input type="hidden" name="task" value="save" />

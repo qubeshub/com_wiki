@@ -29,43 +29,30 @@
  * @license   http://opensource.org/licenses/MIT MIT
  */
 
-namespace Components\Wiki\Admin;
+// No direct access.
+defined('_HZEXEC_') or die();
 
-// Authorization check
-if (!\User::authorise('core.manage', 'com_wiki'))
+if ($this->page->param('mode', 'wiki') == 'knol'
+ && !$this->page->param('hide_authors', 0))
 {
-	return \App::abort(403, \Lang::txt('JERROR_ALERTNOAUTHOR'));
+	$author = $this->escape(stripslashes($this->page->creator()->get('name', Lang::txt('COM_WIKI_UNKNOWN'))));
+
+	$auths = array();
+	$auths[] = ($this->page->creator()->get('public') ? '<a href="' . Route::url($this->page->creator()->getLink()) . '">' . $author . '</a>' : $author);
+
+	foreach ($this->page->authors()->rows() as $auth)
+	{
+		if ($auth->get('user_id') == $this->page->get('created_by'))
+		{
+			continue;
+		}
+
+		$name = $this->escape(stripslashes($auth->get('name')));
+		$name = ($auth->get('public') ? '<a href="' . Route::url($auth->getLink()) . '">' . $name . '</a>' : $name);
+
+		$auths[] = $name;
+	}
+	?>
+	<p class="topic-authors"><?php echo Lang::txt('COM_WIKI_BY_AUTHORS', implode(', ', $auths)); ?></p>
+	<?php
 }
-
-// Include scripts
-require_once(dirname(__DIR__) . DS . 'helpers' . DS . 'permissions.php');
-include_once(dirname(__DIR__) . DS . 'helpers' . DS . 'parser.php');
-include_once(dirname(__DIR__) . DS . 'models' . DS . 'book.php');
-
-// Initiate controller
-$controllerName = \Request::getCmd('controller', 'pages');
-if (!file_exists(__DIR__ . DS . 'controllers' . DS . $controllerName . '.php'))
-{
-	$controllerName = 'pages';
-}
-require_once(__DIR__ . DS . 'controllers' . DS . $controllerName . '.php');
-$controllerName = __NAMESPACE__ . '\\Controllers\\' . ucfirst($controllerName);
-
-\Submenu::addEntry(
-	\Lang::txt('COM_WIKI_PAGES'),
-	\Route::url('index.php?option=com_wiki'),
-	true
-);
-
-require_once(dirname(dirname(__DIR__)) . DS . 'com_plugins' . DS . 'admin' . DS . 'helpers' . DS . 'plugins.php');
-if (\Components\Plugins\Admin\Helpers\Plugins::getActions()->get('core.manage'))
-{
-	\Submenu::addEntry(
-		\Lang::txt('COM_WIKI_PLUGINS'),
-		\Route::url('index.php?option=com_plugins&view=plugins&filter_folder=wiki&filter_type=wiki')
-	);
-}
-
-// Instantiate controller
-$controller = new $controllerName();
-$controller->execute();

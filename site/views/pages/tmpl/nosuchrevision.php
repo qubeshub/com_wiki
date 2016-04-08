@@ -25,45 +25,46 @@
  * HUBzero is a registered trademark of Purdue University.
  *
  * @package   hubzero-cms
- * @author    Shawn Rice <zooley@purdue.edu>
  * @copyright Copyright 2005-2015 HUBzero Foundation, LLC.
  * @license   http://opensource.org/licenses/MIT MIT
  */
 
-// No direct access
+// No direct access.
 defined('_HZEXEC_') or die();
 
-Toolbar::title(Lang::txt('COM_WIKI').': '.Lang::txt('COM_WIKI_REVISION') . ': ' . Lang::txt('COM_WIKI_DELETE'), 'wiki.png');
-Toolbar::cancel();
-
-?>
-<script type="text/javascript">
-function submitbutton(pressbutton)
+if (!$this->sub)
 {
-	var form = document.adminForm;
-
-	if (pressbutton == 'cancel') {
-		submitform( pressbutton );
-		return;
-	}
+	$this->css();
 }
-</script>
-<form action="<?php echo Route::url('index.php?option=' . $this->option . '&controller=' . $this->controller); ?>" method="post" name="adminForm" class="editform" id="item-form">
-	<table class="adminform">
-		<tbody>
-			<tr>
-				<td><input type="radio" name="confirm" id="confirm" value="1" /> <label for="confirm"><?php echo Lang::txt('COM_WIKI_CONFIRM_DELETE'); ?></label></td>
-				<td><input type="submit" name="Submit" value="<?php echo Lang::txt('COM_WIKI_NEXT'); ?>" /></td>
-			</tr>
-		</tbody>
-	</table>
-	<input type="hidden" name="step" value="2" />
-	<input type="hidden" name="task" value="<?php echo $this->task; ?>" />
-	<?php foreach ($this->ids as $id) { ?>
-		<input type="hidden" name="id[]" value="<?php echo $id; ?>" />
-	<?php } ?>
-	<input type="hidden" name="option" value="<?php echo $this->option; ?>" />
-	<input type="hidden" name="controller" value="<?php echo $this->controller; ?>" />
+$this->js();
+?>
+<header id="<?php echo ($this->sub) ? 'sub-content-header' : 'content-header'; ?>">
+	<h2><?php echo $this->escape($this->page->title); ?></h2>
+	<?php
+	if (!$this->page->isStatic())
+	{
+		$this->view('authors', 'pages')
+			//->setBasePath($this->base_path)
+			->set('page', $this->page)
+			->display();
+	}
+	?>
+</header><!-- /#content-header -->
 
-	<?php echo Html::input('token'); ?>
-</form>
+<?php
+if ($this->page->get('id'))
+{
+	$this->view('submenu', 'pages')
+		//->setBasePath($this->base_path)
+		->set('option', $this->option)
+		->set('controller', $this->controller)
+		->set('page', $this->page)
+		->set('task', $this->task)
+		->set('sub', $this->sub)
+		->display();
+}
+?>
+
+<section class="main section">
+	<p class="warning"><?php echo Lang::txt('COM_WIKI_WARNING_NO_REVISION_FOUND', $this->version); ?></p>
+</section><!-- / .main section -->

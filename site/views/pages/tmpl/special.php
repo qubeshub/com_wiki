@@ -25,7 +25,6 @@
  * HUBzero is a registered trademark of Purdue University.
  *
  * @package   hubzero-cms
- * @author    Shawn Rice <zooley@purdue.edu>
  * @copyright Copyright 2005-2015 HUBzero Foundation, LLC.
  * @license   http://opensource.org/licenses/MIT MIT
  */
@@ -40,36 +39,36 @@ if (!$this->sub)
 $this->js();
 ?>
 <header id="<?php echo ($this->sub) ? 'sub-content-header' : 'content-header'; ?>">
-	<h2><?php echo $this->escape($this->title); ?></h2>
+	<h2><?php echo $this->page->title; ?></h2>
 </header><!-- /#content-header -->
 
+<?php if ($this->getError()) { ?>
+	<p class="error"><?php echo $this->getError(); ?></p>
+<?php } ?>
+
 <?php
-	$this->view('submenu', 'page')
-	     ->setBasePath($this->base_path)
-	     ->set('option', $this->option)
-	     ->set('controller', $this->controller)
-	     ->set('page', $this->page)
-	     ->set('task', $this->task)
-	     ->set('sub', $this->sub)
-	     ->display();
+$this->view('submenu', 'pages')
+	//->setBasePath($this->base_path)
+	->set('option', $this->option)
+	->set('controller', $this->controller)
+	->set('page', $this->page)
+	->set('task', $this->task)
+	->set('sub', $this->sub)
+	->display();
 ?>
 
 <section class="main section">
-	<p class="warning">
-		<?php echo Lang::txt('COM_WIKI_WARNING_PAGE_DOES_NOT_EXIST_CREATE_IT', Route::url($this->page->link('new'))); ?>
-	</p>
-<?php if (count($this->book->templates('list', array(), 'true'))) { ?>
-	<p>
-		<?php echo Lang::txt('COM_WIKI_CHOOSE_TEMPLATE'); ?>
-	</p>
-	<ul>
-	<?php foreach ($this->book->templates() as $template) { ?>
-		<li>
-			<a href="<?php echo Route::url($this->page->link('new') . '&tplate=' . stripslashes($template->get('pagename'))); ?>">
-				<?php echo $this->escape(stripslashes($template->get('title'))); ?>
-			</a>
-		</li>
-	<?php } ?>
-	</ul>
-<?php } ?>
+	<article>
+		<?php
+		$this->view(strtolower($this->layout), 'special')
+			//->setBasePath($this->base_path)
+			->set('option', $this->option)
+			->set('controller', $this->controller)
+			->set('page', $this->page)
+			->set('task', $this->task)
+			->set('sub', $this->sub)
+			->set('book', $this->book)
+			->display()
+		?>
+	</article>
 </section><!-- / .main section -->

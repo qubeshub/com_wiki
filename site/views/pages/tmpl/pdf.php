@@ -25,47 +25,16 @@
  * HUBzero is a registered trademark of Purdue University.
  *
  * @package   hubzero-cms
- * @author    Shawn Rice <zooley@purdue.edu>
  * @copyright Copyright 2005-2015 HUBzero Foundation, LLC.
  * @license   http://opensource.org/licenses/MIT MIT
  */
 
 // No direct access.
 defined('_HZEXEC_') or die();
-
-if (!$this->sub)
-{
-	$this->css();
-}
-$this->js();
 ?>
-<header id="<?php echo ($this->sub) ? 'sub-content-header' : 'content-header'; ?>">
-	<h2><?php echo $this->escape($this->title); ?></h2>
-	<?php
-	if (!$this->page->isStatic())
-	{
-		$this->view('authors', 'page')
-		     ->setBasePath($this->base_path)
-		     ->set('page', $this->page)
-		     ->display();
-	}
-	?>
+<header id="content-header">
+	<h2><?php echo $this->page->get('title'); ?></h2>
 </header><!-- /#content-header -->
-
-<?php
-if ($this->page->exists())
-{
-	$this->view('submenu', 'page')
-	     ->setBasePath($this->base_path)
-	     ->set('option', $this->option)
-	     ->set('controller', $this->controller)
-	     ->set('page', $this->page)
-	     ->set('task', $this->task)
-	     ->set('sub', $this->sub)
-	     ->display();
-}
-?>
-
-<section class="main section">
-	<p class="warning"><?php echo Lang::txt('COM_WIKI_WARNING_NO_REVISION_FOUND', $this->version); ?></p>
-</section><!-- / .main section -->
+<article class="wikipage">
+	<?php echo $this->revision->get('pagehtml'); ?>
+</article>

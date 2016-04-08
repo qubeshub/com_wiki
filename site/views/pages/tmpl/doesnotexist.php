@@ -25,17 +25,55 @@
  * HUBzero is a registered trademark of Purdue University.
  *
  * @package   hubzero-cms
- * @author    Shawn Rice <zooley@purdue.edu>
  * @copyright Copyright 2005-2015 HUBzero Foundation, LLC.
  * @license   http://opensource.org/licenses/MIT MIT
  */
 
 // No direct access.
 defined('_HZEXEC_') or die();
+
+if (!$this->sub)
+{
+	$this->css();
+}
+$this->js();
+
+$templates = $this->book->templates()
+	->whereEquals('state', \Components\Wiki\Models\Page::STATE_PUBLISHED)
+	->rows();
 ?>
-<header id="content-header">
-	<h2><?php echo $this->page->get('title'); ?></h2>
+
+<header id="<?php echo ($this->sub) ? 'sub-content-header' : 'content-header'; ?>">
+	<h2><?php echo $this->escape($this->page->title); ?></h2>
 </header><!-- /#content-header -->
-<article class="wikipage">
-	<?php echo $this->revision->get('pagehtml'); ?>
-</article>
+
+<?php
+	$this->view('submenu', 'pages')
+		//->setBasePath($this->base_path)
+		->set('option', $this->option)
+		->set('controller', $this->controller)
+		->set('page', $this->page)
+		->set('task', $this->task)
+		->set('sub', $this->sub)
+		->display();
+?>
+
+<section class="main section">
+	<p class="warning">
+		<?php echo Lang::txt('COM_WIKI_WARNING_PAGE_DOES_NOT_EXIST_CREATE_IT', Route::url($this->page->link('new'))); ?>
+	</p>
+	<?php if ($templates->count()) { ?>
+		<p>
+			<?php echo Lang::txt('COM_WIKI_CHOOSE_TEMPLATE'); ?>
+		</p>
+		<ul>
+			<?php foreach ($templates as $template) { ?>
+				<li>
+					<a href="<?php echo Route::url($this->page->link('new') . '&tplate=' . stripslashes($template->get('pagename'))); ?>">
+						<?php echo $this->escape(stripslashes($template->title)); ?>
+					</a>
+				</li>
+			<?php } ?>
+		</ul>
+	<?php } ?>
+</section><!-- / .main section -->

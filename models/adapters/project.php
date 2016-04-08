@@ -25,7 +25,6 @@
  * HUBzero is a registered trademark of Purdue University.
  *
  * @package   hubzero-cms
- * @author    Shawn Rice <zooley@purdue.edu>
  * @copyright Copyright 2005-2015 HUBzero Foundation, LLC.
  * @license   http://opensource.org/licenses/MIT MIT
  */
@@ -40,16 +39,40 @@ require_once(__DIR__ . DS . 'base.php');
 /**
  * Adapter class for a project note
  */
-class Projects extends Base
+class Project extends Base
 {
 	/**
 	 * URL segments
 	 *
-	 * @var string
+	 * @var  array
 	 */
 	protected $_segments = array(
 		'option' => 'com_projects',
+		'alias'  => '',
+		'active' => 'notes'
 	);
+
+	/**
+	 * Constructor
+	 *
+	 * @param   string   $pagename
+	 * @param   string   $path
+	 * @param   integer  $scope_id
+	 * @return  void
+	 */
+	public function __construct($pagename=null, $path=null, $scope_id=0)
+	{
+		$pagename = ($path ? $path . '/' : '') . $pagename;
+
+		$this->_segments['pagename'] = $pagename;
+
+		$this->_scope_id = $scope_id;
+
+		//$project = Project::getInstance($this->_scope_id);
+		$project = Request::getVar('project', NULL);
+
+		$this->_segments['alias'] = $project;
+	}
 
 	/**
 	 * Generate and return various links to the entry
@@ -121,5 +144,21 @@ class Projects extends Base
 		$segments = array_merge($segments, (array) $params);
 
 		return Route::url($this->_base . '?' . (string) $this->_build($segments) . (string) $anchor) . '?t=1';
+	}
+
+	/**
+	 * Get an array of routing inputs
+	 *
+	 * @param   string  $task
+	 * @return  array
+	 */
+	public function routing($task='save')
+	{
+		return array(
+			'option' => $this->_segments['option'],
+			'alias'  => $this->_segments['alias'],
+			'active' => $this->_segments['active'],
+			'action' => $task
+		);
 	}
 }

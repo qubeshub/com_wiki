@@ -29,43 +29,40 @@
  * @license   http://opensource.org/licenses/MIT MIT
  */
 
-namespace Components\Wiki\Admin;
+// No direct access
+defined('_HZEXEC_') or die();
 
-// Authorization check
-if (!\User::authorise('core.manage', 'com_wiki'))
+Toolbar::title(Lang::txt('COM_WIKI').': '.Lang::txt('COM_WIKI_REVISION') . ': ' . Lang::txt('COM_WIKI_DELETE'), 'wiki.png');
+Toolbar::cancel();
+
+?>
+<script type="text/javascript">
+function submitbutton(pressbutton)
 {
-	return \App::abort(403, \Lang::txt('JERROR_ALERTNOAUTHOR'));
+	var form = document.adminForm;
+
+	if (pressbutton == 'cancel') {
+		submitform( pressbutton );
+		return;
+	}
 }
+</script>
+<form action="<?php echo Route::url('index.php?option=' . $this->option . '&controller=' . $this->controller); ?>" method="post" name="adminForm" class="editform" id="item-form">
+	<table class="adminform">
+		<tbody>
+			<tr>
+				<td><input type="radio" name="confirm" id="confirm" value="1" /> <label for="confirm"><?php echo Lang::txt('COM_WIKI_CONFIRM_DELETE'); ?></label></td>
+				<td><input type="submit" name="Submit" value="<?php echo Lang::txt('COM_WIKI_NEXT'); ?>" /></td>
+			</tr>
+		</tbody>
+	</table>
+	<input type="hidden" name="step" value="2" />
+	<input type="hidden" name="task" value="<?php echo $this->task; ?>" />
+	<?php foreach ($this->ids as $id) { ?>
+		<input type="hidden" name="id[]" value="<?php echo $id; ?>" />
+	<?php } ?>
+	<input type="hidden" name="option" value="<?php echo $this->option; ?>" />
+	<input type="hidden" name="controller" value="<?php echo $this->controller; ?>" />
 
-// Include scripts
-require_once(dirname(__DIR__) . DS . 'helpers' . DS . 'permissions.php');
-include_once(dirname(__DIR__) . DS . 'helpers' . DS . 'parser.php');
-include_once(dirname(__DIR__) . DS . 'models' . DS . 'book.php');
-
-// Initiate controller
-$controllerName = \Request::getCmd('controller', 'pages');
-if (!file_exists(__DIR__ . DS . 'controllers' . DS . $controllerName . '.php'))
-{
-	$controllerName = 'pages';
-}
-require_once(__DIR__ . DS . 'controllers' . DS . $controllerName . '.php');
-$controllerName = __NAMESPACE__ . '\\Controllers\\' . ucfirst($controllerName);
-
-\Submenu::addEntry(
-	\Lang::txt('COM_WIKI_PAGES'),
-	\Route::url('index.php?option=com_wiki'),
-	true
-);
-
-require_once(dirname(dirname(__DIR__)) . DS . 'com_plugins' . DS . 'admin' . DS . 'helpers' . DS . 'plugins.php');
-if (\Components\Plugins\Admin\Helpers\Plugins::getActions()->get('core.manage'))
-{
-	\Submenu::addEntry(
-		\Lang::txt('COM_WIKI_PLUGINS'),
-		\Route::url('index.php?option=com_plugins&view=plugins&filter_folder=wiki&filter_type=wiki')
-	);
-}
-
-// Instantiate controller
-$controller = new $controllerName();
-$controller->execute();
+	<?php echo Html::input('token'); ?>
+</form>

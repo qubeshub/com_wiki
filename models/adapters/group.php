@@ -25,7 +25,6 @@
  * HUBzero is a registered trademark of Purdue University.
  *
  * @package   hubzero-cms
- * @author    Shawn Rice <zooley@purdue.edu>
  * @copyright Copyright 2005-2015 HUBzero Foundation, LLC.
  * @license   http://opensource.org/licenses/MIT MIT
  */
@@ -37,16 +36,39 @@ require_once(__DIR__ . DS . 'base.php');
 /**
  * Adapter class for a group wiki
  */
-class Groups extends Base
+class Group extends Base
 {
 	/**
 	 * URL segments
 	 *
-	 * @var string
+	 * @var  array
 	 */
 	protected $_segments = array(
 		'option' => 'com_groups',
+		'cn'     => '',
+		'active' => 'wiki'
 	);
+
+	/**
+	 * Constructor
+	 *
+	 * @param   string   $pagename
+	 * @param   string   $path
+	 * @param   integer  $scope_id
+	 * @return  void
+	 */
+	public function __construct($pagename=null, $path=null, $scope_id=0)
+	{
+		$pagename = ($path ? $path . '/' : '') . $pagename;
+
+		$this->_segments['pagename'] = $pagename;
+
+		$this->_scope_id = $scope_id;
+
+		$group = \Hubzero\User\Group::getInstance($this->_scope_id);
+
+		$this->_segments['cn'] = $group->get('cn');
+	}
 
 	/**
 	 * Generate and return various links to the entry
@@ -113,5 +135,20 @@ class Groups extends Base
 
 		return $this->_base . '?' . (string) $this->_build($segments) . (string) $anchor;
 	}
-}
 
+	/**
+	 * Get an array of routing inputs
+	 *
+	 * @param   string  $task
+	 * @return  array
+	 */
+	public function routing($task='save')
+	{
+		return array(
+			'option' => $this->_segments['option'],
+			'cn'     => $this->_segments['cn'],
+			'active' => $this->_segments['active'],
+			'action' => $task
+		);
+	}
+}

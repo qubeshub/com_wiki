@@ -25,7 +25,6 @@
  * HUBzero is a registered trademark of Purdue University.
  *
  * @package   hubzero-cms
- * @author    Shawn Rice <zooley@purdue.edu>
  * @copyright Copyright 2005-2015 HUBzero Foundation, LLC.
  * @license   http://opensource.org/licenses/MIT MIT
  */
@@ -33,13 +32,10 @@
 namespace Components\Wiki\Admin\Controllers;
 
 use Hubzero\Component\AdminController;
-use Components\Wiki\Models\Book;
 use Components\Wiki\Models\Page;
-use Components\Wiki\Models\Revision;
+use Components\Wiki\Models\Version;
 use Components\Wiki\Helpers\Parser;
-use Components\Wiki\Tables;
 use Request;
-use Config;
 use User;
 use Lang;
 use Date;
@@ -48,7 +44,7 @@ use App;
 /**
  * Controller class for wiki page revisions
  */
-class Revisions extends AdminController
+class Versions extends AdminController
 {
 	/**
 	 * Execute a task
@@ -73,20 +69,7 @@ class Revisions extends AdminController
 	 */
 	public function displayTask()
 	{
-		$this->view->filters = array(
-			// Paging
-			'limit' => Request::getState(
-				$this->_option . '.' . $this->_controller . '.limit',
-				'limit',
-				Config::get('list_limit'),
-				'int'
-			),
-			'start' => Request::getState(
-				$this->_option . '.' . $this->_controller . '.limitstart',
-				'limitstart',
-				0,
-				'int'
-			),
+		$filters = array(
 			// Sorting
 			'sort' => Request::getState(
 				$this->_option . '.' . $this->_controller . '.sort',
@@ -109,27 +92,32 @@ class Revisions extends AdminController
 				'pageid',
 				0,
 				'int'
-			),
-			'state' => array(0, 1, 2)
+			)
 		);
-		$this->view->filters['sortby'] = $this->view->filters['sort']  . ' ' . $this->view->filters['sort_Dir'];
 
-		$this->view->page = new Page(intval($this->view->filters['pageid']));
-
-		// Get record count
-		$this->view->total = $this->view->page->revisions('count', $this->view->filters);
+		$page = Page::oneOrNew(intval($filters['pageid']));
 
 		// Get records
-		$this->view->rows = $this->view->page->revisions('list', $this->view->filters);
+		$records = $page->versions();
 
-		// Set any errors
-		foreach ($this->getErrors() as $error)
+		if ($filters['search'])
 		{
-			$this->view->setError($error);
+			$filters['search'] = strtolower((string)$filters['search']);
+
+			$records->whereLike('pagetext', $filters['search']);
 		}
 
+		$rows = $records
+			->ordered('filter_order', 'filter_order_Dir')
+			->paginated('limitstart', 'limit')
+			->rows();
+
 		// Output the HTML
-		$this->view->display();
+		$this->view
+			->set('rows', $rows)
+			->set('filters', $filters)
+			->set('page', $page)
+			->display();
 	}
 
 	/**
@@ -143,6 +131,7 @@ class Revisions extends AdminController
 		Request::setVar('hidemainmenu', 1);
 
 		$pageid = Request::getInt('pageid', 0);
+
 		if (!$pageid)
 		{
 			App::redirect(
@@ -153,7 +142,7 @@ class Revisions extends AdminController
 			return;
 		}
 
-		$this->view->page = new Page(intval($pageid));
+		$page = Page::oneOrFail(intval($pageid));
 
 		if (!is_object($row))
 		{
@@ -164,29 +153,27 @@ class Revisions extends AdminController
 				$id = $id[0];
 			}
 
-			$row = new Revision($id);
+			$row = Version::oneOrNew($id);
 		}
 
-		$this->view->revision = $row;
-
-		if (!$this->view->revision->exists())
+		if ($row->isNew())
 		{
 			// Creating new
-			$this->view->revision = $this->view->page->revision('current');
-			$this->view->revision->set('version', $this->view->revision->get('version') + 1);
-			$this->view->revision->set('created_by', User::get('id'));
-			$this->view->revision->set('id', 0);
-			$this->view->revision->set('pageid', $this->view->page->get('id'));
-		}
+			$current = $page->versions()
+				->ordered()
+				->row();
 
-		// Set any errors
-		foreach ($this->getErrors() as $error)
-		{
-			$this->view->setError($error);
+			$row->set('version', $current->get('version') + 1);
+			$row->set('created_by', User::get('id'));
+			$row->set('id', 0);
+			$row->set('page_id', $page->get('id'));
 		}
 
 		// Output the HTML
 		$this->view
+			->set('page', $page)
+			->set('row', $row)
+			->setErrors($this->getErrors())
 			->setLayout('edit')
 			->display();
 	}
@@ -206,69 +193,70 @@ class Revisions extends AdminController
 		$revision = array_map('trim', $revision);
 
 		// Initiate extended database class
-		$row = new Revision($revision['id']);
-		$before = $row->get('approved');
-		if (!$row->bind($revision))
-		{
-			$this->setMessage($row->getError(), 'error');
-			$this->editTask($row);
-			return;
-		}
+		$version = Version::oneOrNew($revision['id']);
 
-		if (!$row->exists())
-		{
-			$row->set('created', Date::toSql());
-		}
+		// Get the "approved" state before binding incoming data
+		$before = $version->get('approved');
 
-		$page = new Page(intval($row->get('pageid')));
+		// Bind data
+		$version->set($revision);
+
+		// Get the parent page
+		$page = Page::oneOrFail(intval($version->get('page_id')));
 
 		// Parse text
-		$wikiconfig = array(
-			'option'   => $this->_option,
-			'scope'    => $page->get('scope'),
-			'pagename' => $page->get('pagename'),
-			'pageid'   => $page->get('id'),
-			'filepath' => '',
-			'domain'   => $this->_group
-		);
-
-		$p = Parser::getInstance();
-		$row->set('pagehtml', $p->parse($row->get('pagetext'), $wikiconfig));
+		$parser = Parser::getInstance();
+		$version->set('pagehtml', $parser->parse(
+			$version->get('pagetext'),
+			array(
+				'option'   => $this->_option,
+				'scope'    => $page->get('scope'),
+				'scope_id' => $page->get('scope_id'),
+				'path'     => $page->get('path'),
+				'pagename' => $page->get('pagename'),
+				'pageid'   => $page->get('id'),
+				'filepath' => ''
+			)
+		));
 
 		// Store new content
-		if (!$row->store())
+		if (!$version->save())
 		{
-			$this->setMessage($row->getError(), 'error');
-			$this->editTask($row);
-			return;
+			Notify::error($version->getError());
+			return $this->editTask($version);
 		}
 
 		// Get the most recent revision and compare to the set "current" version
-		if ($before != 1 && $row->get('approved') == 1)
+		if ($before != 1 && $version->get('approved') == 1)
 		{
-			$page->revisions('list', array(), true)->last();
-			if ($page->revisions()->current()->get('id') == $row->get('id'))
+			$current = $page->versions()
+				->whereEquals('approved', 1)
+				->ordered()
+				->row();
+
+			if ($current->get('id') == $version->get('id'))
 			{
 				// The newly approved revision is now the most current
 				// So, we need to update the page's version_id
-				$page->set('version_id', $page->revisions()->current()->get('id'));
-				$page->store(false, 'revision_approved');
+				$page->set('version_id', $version->get('id'));
+				$page->save();
 			}
-			else
-			{
-				$page->log('revision_approved');
-			}
+
+			$page->log('revision_approved');
 		}
 
-		// Set the redirect
+		// Set the success message
+		Notify::success(Lang::txt('COM_WIKI_REVISION_SAVED'));
+
+		// Fall through to the edit form
 		if ($this->getTask() == 'apply')
 		{
-			return $this->editTask($row);
+			return $this->editTask($version);
 		}
 
+		// Redirect to listing
 		App::redirect(
-			Route::url('index.php?option=' . $this->_option . '&controller=' . $this->_controller . '&pageid=' . $row->get('pageid'), false),
-			Lang::txt('COM_WIKI_REVISION_SAVED')
+			Route::url('index.php?option=' . $this->_option . '&controller=' . $this->_controller . '&pageid=' . $version->get('page_id'), false)
 		);
 	}
 
@@ -304,17 +292,12 @@ class Revisions extends AdminController
 			case 1:
 				Request::setVar('hidemainmenu', 1);
 
-				$this->view->ids = $ids;
-				$this->view->pageid = $pageid;
-
-				// Set any errors
-				foreach ($this->getErrors() as $error)
-				{
-					$this->view->setError($error);
-				}
-
 				// Output the HTML
-				$this->view->display();
+				$this->view
+					->set('ids', $ids)
+					->set('pageid', $pageid)
+					->setErrors($this->getErrors())
+					->display();
 			break;
 
 			case 2:
@@ -323,57 +306,59 @@ class Revisions extends AdminController
 
 				// Check if they confirmed
 				$confirmed = Request::getInt('confirm', 0);
+
 				if (!$confirmed)
 				{
-					// Instantiate a new view
-					$this->view->ids = $ids;
-
-					$this->setMessage(Lang::txt('COM_WIKI_CONFIRM_DELETE'), 'error');
+					Notify::error(Lang::txt('COM_WIKI_CONFIRM_DELETE'));
 
 					// Output the HTML
-					$this->view->display();
+					$this->view
+						->set('ids', $ids)
+						->set('pageid', $pageid)
+						->setErrors($this->getErrors())
+						->display();
 					return;
 				}
 
-				$msg = '';
-				if (!empty($ids))
+				$i = 0;
+
+				foreach ($ids as $id)
 				{
-					$db = App::get('db');
-					$tbl = new Tables\Revision($db);
+					// Load the revision
+					$version = Version::oneOrFail($id);
 
-					foreach ($ids as $id)
+					$pageid = $version->get('page_id', $pageid);
+
+					// Get a count of all approved revisions
+					$count = Version::all()
+						->whereEquals('pageid', $pageid)
+						->whereEquals('approved', 1)
+						->total();
+
+					// Can't delete - it's the only approved version!
+					if ($count <= 1)
 					{
-						// Load the revision
-						$revision = new Revision($id);
-
-						$pageid = ($pageid ? $pageid : $revision->get('pageid'));
-
-						// Get a count of all approved revisions
-						$tbl->pageid = $pageid;
-						$count = $tbl->getRevisionCount();
-
-						// Can't delete - it's the only approved version!
-						if ($count <= 1)
-						{
-							App::redirect(
-								Route::url('index.php?option=' . $this->_option . '&controller=' . $this->_controller . '&pageid=' . $pageid, false),
-								Lang::txt('COM_WIKI_ERROR_CANNOT_REMOVE_REVISION'),
-								'error'
-							);
-							return;
-						}
-
-						// Delete it
-						$revision->delete();
+						Notify::error(Lang::txt('COM_WIKI_ERROR_CANNOT_REMOVE_REVISION'));
+						continue;
 					}
 
-					$msg = Lang::txt('COM_WIKI_PAGES_DELETED', count($ids));
+					// Delete it
+					if (!$version->destroy())
+					{
+						Notify::error($version->getError());
+					}
+
+					$i++;
+				}
+
+				if ($i)
+				{
+					Notify::success(Lang::txt('COM_WIKI_PAGES_DELETED', $i));
 				}
 
 				// Set the redirect
 				App::redirect(
-					Route::url('index.php?option=' . $this->_option . '&controller=' . $this->_controller . '&pageid=' . $pageid, false),
-					$msg
+					Route::url('index.php?option=' . $this->_option . '&controller=' . $this->_controller . '&pageid=' . $pageid, false)
 				);
 			break;
 		}
@@ -396,17 +381,12 @@ class Revisions extends AdminController
 		if ($id)
 		{
 			// Load the revision, approve it, and save
-			$revision = new Revision($id);
-			$revision->set('approved', Request::getInt('approve', 0));
+			$version = Version::oneOrFail($id);
+			$version->set('approved', Request::getInt('approve', 0));
 
-			if (!$revision->store())
+			if (!$version->save())
 			{
-				App::redirect(
-					Route::url('index.php?option=' . $this->_option . '&controller=' . $this->_controller . '&pageid=' . $pageid, false),
-					$revision->getError(),
-					'error'
-				);
-				return;
+				Notify::error($version->getError());
 			}
 		}
 
@@ -427,4 +407,3 @@ class Revisions extends AdminController
 		);
 	}
 }
-

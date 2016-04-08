@@ -25,7 +25,6 @@
  * HUBzero is a registered trademark of Purdue University.
  *
  * @package   hubzero-cms
- * @author    Shawn Rice <zooley@purdue.edu>
  * @copyright Copyright 2005-2015 HUBzero Foundation, LLC.
  * @license   http://opensource.org/licenses/MIT MIT
  */
@@ -45,29 +44,29 @@ if (!$this->sub)
 // Include any Scripts
 $this->js();
 ?>
-	<header id="<?php echo ($this->sub) ? 'sub-content-header' : 'content-header'; ?>">
-		<?php if (count($this->parents)) { ?>
-			<p class="wiki-crumbs">
-				<?php foreach ($this->parents as $parent) { ?>
-					<a class="wiki-crumb" href="<?php echo Route::url($parent->link()); ?>"><?php echo $parent->get('title'); ?></a> /
-				<?php } ?>
-			</p>
-		<?php } ?>
+<header id="<?php echo ($this->sub) ? 'sub-content-header' : 'content-header'; ?>">
+	<?php if (count($this->parents)) { ?>
+		<p class="wiki-crumbs">
+			<?php foreach ($this->parents as $parent) { ?>
+				<a class="wiki-crumb" href="<?php echo Route::url($parent->link()); ?>"><?php echo $parent->title; ?></a> /
+			<?php } ?>
+		</p>
+	<?php } ?>
 
-		<h2><?php echo $this->title; ?></h2>
-		<?php
-		if (!$this->page->isStatic())
-		{
-			$this->view('authors', 'page')
-			     ->setBasePath($this->base_path)
-			     ->set('page', $this->page)
-			     ->display();
-		}
-		?>
+	<h2><?php echo $this->page->title; ?></h2>
+	<?php
+	if (!$this->page->isStatic())
+	{
+		$this->view('authors')
+			//->setBasePath($this->base_path)
+			->set('page', $this->page)
+			->display();
+	}
+	?>
 
 	<?php echo $this->page->event->afterDisplayTitle; ?>
 
-	<?php if ($this->page->isStatic() && $this->page->access('admin') && $this->controller == 'page' && $this->task == 'display') { ?>
+	<?php if ($this->page->isStatic() && $this->page->access('admin') && $this->controller == 'pages' && $this->task == 'display') { ?>
 		<div id="<?php echo ($this->sub) ? 'sub-content-header' : 'content-header'; ?>-extra">
 			<ul>
 				<li><a class="icon-edit edit btn" href="<?php echo Route::url($this->page->link('edit')); ?>"><?php echo Lang::txt('JACTION_EDIT'); ?></a></li>
@@ -75,29 +74,26 @@ $this->js();
 			</ul>
 		</div><!-- /#content-header-extra -->
 	<?php } ?>
-	</header><!-- /#content-header -->
+</header><!-- /#content-header -->
 
 <?php if ($this->getError()) { ?>
 	<p class="error"><?php echo $this->getError(); ?></p>
 <?php } ?>
 
-<?php if ($this->message) { ?>
-	<p class="passed"><?php echo $this->message; ?></p>
-<?php } ?>
-
 <?php
 echo $this->page->event->beforeDisplayContent;
 
-if (!$this->page->isStatic()) {
-	$this->view('submenu', 'page')
-	     ->setBasePath($this->base_path)
-	     ->set('option', $this->option)
-	     ->set('controller', $this->controller)
-	     ->set('page', $this->page)
-	     ->set('task', $this->task)
-	     ->set('sub', $this->sub)
-	     ->display();
-?>
+if (!$this->page->isStatic())
+{
+	$this->view('submenu')
+		//->setBasePath($this->base_path)
+		->set('option', $this->option)
+		->set('controller', $this->controller)
+		->set('page', $this->page)
+		->set('task', $this->task)
+		->set('sub', $this->sub)
+		->display();
+	?>
 	<section class="main section">
 		<article class="wikipage">
 			<?php echo $this->revision->get('pagehtml'); ?>
@@ -110,16 +106,18 @@ if (!$this->page->isStatic()) {
 				</span>
 				<?php }*/ ?>
 			</p>
-		<?php if ($this->page->tags('cloud')) { ?>
-			<div class="article-tags">
-				<h3><?php echo Lang::txt('COM_WIKI_PAGE_TAGS'); ?></h3>
-				<?php echo $this->page->tags('cloud'); ?>
-			</div>
-		<?php } ?>
+			<?php if ($this->page->tags('cloud')) { ?>
+				<div class="article-tags">
+					<h3><?php echo Lang::txt('COM_WIKI_PAGE_TAGS'); ?></h3>
+					<?php echo $this->page->tags('cloud'); ?>
+				</div>
+			<?php } ?>
 		</article>
 	</section><!-- / .main section -->
-<?php
-} else {
+	<?php
+}
+else
+{
 	echo $this->revision->get('pagehtml');
 }
 

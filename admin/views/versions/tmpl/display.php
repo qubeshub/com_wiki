@@ -25,7 +25,6 @@
  * HUBzero is a registered trademark of Purdue University.
  *
  * @package   hubzero-cms
- * @author    Shawn Rice <zooley@purdue.edu>
  * @copyright Copyright 2005-2015 HUBzero Foundation, LLC.
  * @license   http://opensource.org/licenses/MIT MIT
  */
@@ -70,15 +69,15 @@ function submitbutton(pressbutton)
 		<tbody>
 			<tr>
 				<th><?php echo Lang::txt('COM_WIKI_COL_TITLE'); ?></th>
-				<td><?php echo $this->escape(stripslashes($this->page->get('title'))); ?></td>
+				<td><?php echo $this->escape(stripslashes($this->page->title)); ?></td>
 				<th class="priority-2"><?php echo Lang::txt('COM_WIKI_COL_SCOPE'); ?></th>
-				<td class="priority-2"><?php echo $this->escape(stripslashes($this->page->get('scope'))); ?></td>
+				<td class="priority-2"><?php echo $this->escape(stripslashes($this->page->get('scope')) . ':' . $this->page->get('scope_id')); ?></td>
 			</tr>
 			<tr>
 				<th>(<?php echo Lang::txt('COM_WIKI_COL_ID'); ?>) <?php echo Lang::txt('COM_WIKI_COL_PAGENAME'); ?></th>
 				<td>(<?php echo $this->page->get('id'); ?>) <?php echo $this->escape(stripslashes($this->page->get('pagename'))); ?></td>
-				<th class="priority-2"><?php echo Lang::txt('COM_WIKI_COL_GROUP'); ?></th>
-				<td class="priority-2"><?php echo $this->escape(stripslashes($this->page->get('group_cn'))); ?></td>
+				<th class="priority-2"><?php echo Lang::txt('COM_WIKI_COL_PATH'); ?></th>
+				<td class="priority-2"><?php echo $this->escape(stripslashes($this->page->get('path'))); ?></td>
 			</tr>
 		</tbody>
 	</table>
@@ -94,25 +93,21 @@ function submitbutton(pressbutton)
 	<table class="adminlist">
 		<thead>
 			<tr>
-				<th scope="col"><input type="checkbox" name="toggle" value="" onclick="checkAll(<?php echo count($this->rows);?>);" /></th>
-				<th scope="col" class="priority-4"><?php echo $this->grid('sort', 'COM_WIKI_COL_ID', 'id', @$this->filters['sort_Dir'], @$this->filters['sort']); ?></th>
-				<th scope="col"><?php echo $this->grid('sort', 'COM_WIKI_COL_REVISION', 'revision', @$this->filters['sort_Dir'], @$this->filters['sort']); ?></th>
-				<th scope="col" class="priority-5"><?php echo $this->grid('sort', 'COM_WIKI_COL_EDIT_SUMMARY', 'summary', @$this->filters['sort_Dir'], @$this->filters['sort']); ?></th>
-				<th scope="col"><?php echo $this->grid('sort', 'COM_WIKI_COL_APPROVED', 'approved', @$this->filters['sort_Dir'], @$this->filters['sort']); ?></th>
-				<th scope="col" class="priority-4"><?php echo $this->grid('sort', 'COM_WIKI_COL_MINOR_EDIT', 'minor_edit', @$this->filters['sort_Dir'], @$this->filters['sort']); ?></th>
-				<th scope="col" class="priority-3"><?php echo $this->grid('sort', 'COM_WIKI_COL_CREATED', 'created', @$this->filters['sort_Dir'], @$this->filters['sort']); ?></th>
-				<th scope="col" class="priority-2"><?php echo $this->grid('sort', 'COM_WIKI_COL_CREATOR', 'created_by', @$this->filters['sort_Dir'], @$this->filters['sort']); ?></th>
+				<th scope="col"><input type="checkbox" name="toggle" value="" onclick="checkAll(<?php echo $this->rows->count(); ?>);" /></th>
+				<th scope="col" class="priority-4"><?php echo Html::grid('sort', 'COM_WIKI_COL_ID', 'id', @$this->filters['sort_Dir'], @$this->filters['sort']); ?></th>
+				<th scope="col"><?php echo Html::grid('sort', 'COM_WIKI_COL_REVISION', 'revision', @$this->filters['sort_Dir'], @$this->filters['sort']); ?></th>
+				<th scope="col" class="priority-5"><?php echo Html::grid('sort', 'COM_WIKI_COL_EDIT_SUMMARY', 'summary', @$this->filters['sort_Dir'], @$this->filters['sort']); ?></th>
+				<th scope="col"><?php echo Html::grid('sort', 'COM_WIKI_COL_APPROVED', 'approved', @$this->filters['sort_Dir'], @$this->filters['sort']); ?></th>
+				<th scope="col" class="priority-4"><?php echo Html::grid('sort', 'COM_WIKI_COL_MINOR_EDIT', 'minor_edit', @$this->filters['sort_Dir'], @$this->filters['sort']); ?></th>
+				<th scope="col" class="priority-3"><?php echo Html::grid('sort', 'COM_WIKI_COL_CREATED', 'created', @$this->filters['sort_Dir'], @$this->filters['sort']); ?></th>
+				<th scope="col" class="priority-2"><?php echo Html::grid('sort', 'COM_WIKI_COL_CREATOR', 'created_by', @$this->filters['sort_Dir'], @$this->filters['sort']); ?></th>
 			</tr>
 		</thead>
 		<tfoot>
 			<tr>
 				<td colspan="8"><?php
 				// Initiate paging
-				echo $this->pagination(
-					$this->total,
-					$this->filters['start'],
-					$this->filters['limit']
-				);
+				echo $this->rows->pagination;
 				?></td>
 			</tr>
 		</tfoot>
@@ -164,7 +159,7 @@ function submitbutton(pressbutton)
 					<?php } ?>
 				</td>
 				<td class="priority-5">
-					<?php echo $this->escape(stripslashes($row->get('summary'))); ?>
+					<?php echo (trim($row->get('summary')) ? $this->escape(stripslashes($row->get('summary'))) : Lang::txt('COM_WIKI_NONE')); ?>
 				</td>
 				<td>
 					<?php if ($canDo->get('core.edit.state')) { ?>
@@ -183,11 +178,11 @@ function submitbutton(pressbutton)
 					</span>
 				</td>
 				<td class="priority-2">
-					<time datetime="<?php echo $this->escape($row->get('created')); ?>"><?php echo $this->escape($row->get('created')); ?></time>
+					<time datetime="<?php echo $this->escape($row->get('created')); ?>"><?php echo $this->escape($row->created('time') . ' ' . $row->created('date')); ?></time>
 				</td>
 				<td class="priority-3">
 					<span class="glyph user">
-						<?php echo $this->escape(stripslashes($row->get('created_by_name'))); ?>
+						<?php echo $this->escape(stripslashes($row->creator()->get('name', Lang::txt('COM_WIKI_UNKNOWN')))); ?>
 					</span>
 				</td>
 			</tr>
@@ -199,8 +194,8 @@ function submitbutton(pressbutton)
 		</tbody>
 	</table>
 
-	<input type="hidden" name="filter_order" value="<?php echo $this->filters['sort']; ?>" />
-	<input type="hidden" name="filter_order_Dir" value="<?php echo $this->filters['sort_Dir']; ?>" />
+	<input type="hidden" name="filter_order" value="<?php echo $this->escape($this->filters['sort']); ?>" />
+	<input type="hidden" name="filter_order_Dir" value="<?php echo $this->escape($this->filters['sort_Dir']); ?>" />
 	<input type="hidden" name="option" value="<?php echo $this->option; ?>" />
 	<input type="hidden" name="controller" value="<?php echo $this->controller; ?>" />
 	<input type="hidden" name="task" value="<?php echo $this->task; ?>" autocomplete="off" />
