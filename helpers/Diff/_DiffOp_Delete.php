@@ -25,47 +25,49 @@
  * HUBzero is a registered trademark of Purdue University.
  *
  * @package   hubzero-cms
+ * @author    Shawn Rice <zooley@purdue.edu>
  * @copyright Copyright 2005-2015 HUBzero Foundation, LLC.
  * @license   http://opensource.org/licenses/MIT MIT
  */
 
-namespace Components\Wiki\Admin;
+// No direct access.
+defined('_HZEXEC_') or die();
 
-// Authorization check
-if (!\User::authorise('core.manage', 'com_wiki'))
+/**
+ * Delete operation
+ */
+class _DiffOp_Delete extends _DiffOp
 {
-	return \App::abort(403, \Lang::txt('JERROR_ALERTNOAUTHOR'));
+	/**
+	 * Description for 'type'
+	 *
+	 * @var string
+	 */
+	public $type = 'delete';
+
+	/**
+	 * Short description for '_DiffOp_Delete'
+	 *
+	 * Long description (if any) ...
+	 *
+	 * @param      unknown $lines Parameter description (if any) ...
+	 * @return     void
+	 */
+	public function __construct($lines)
+	{
+		$this->orig = $lines;
+		$this->closing = false;
+	}
+
+	/**
+	 * Short description for 'reverse'
+	 *
+	 * Long description (if any) ...
+	 *
+	 * @return     object Return description (if any) ...
+	 */
+	public function reverse()
+	{
+		return new _DiffOp_Add($this->orig);
+	}
 }
-
-// Include scripts
-require_once dirname(__DIR__) . DS . 'helpers' . DS . 'permissions.php';
-require_once dirname(__DIR__) . DS . 'helpers' . DS . 'parser.php';
-require_once dirname(__DIR__) . DS . 'models' . DS . 'book.php';
-
-// Initiate controller
-$controllerName = \Request::getCmd('controller', 'pages');
-if (!file_exists(__DIR__ . DS . 'controllers' . DS . $controllerName . '.php'))
-{
-	$controllerName = 'pages';
-}
-require_once __DIR__ . DS . 'controllers' . DS . $controllerName . '.php';
-$controllerName = __NAMESPACE__ . '\\Controllers\\' . ucfirst($controllerName);
-
-\Submenu::addEntry(
-	\Lang::txt('COM_WIKI_PAGES'),
-	\Route::url('index.php?option=com_wiki'),
-	true
-);
-
-require_once dirname(dirname(__DIR__)) . DS . 'com_plugins' . DS . 'helpers' . DS . 'plugins.php';
-if (\Components\Plugins\Helpers\Plugins::getActions()->get('core.manage'))
-{
-	\Submenu::addEntry(
-		\Lang::txt('COM_WIKI_PLUGINS'),
-		\Route::url('index.php?option=com_plugins&view=plugins&filter_folder=wiki&filter_type=wiki')
-	);
-}
-
-// Instantiate controller
-$controller = new $controllerName();
-$controller->execute();
