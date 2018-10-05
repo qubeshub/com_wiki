@@ -36,28 +36,38 @@ if (!$this->sub)
 {
 	$this->css();
 }
-
-$orauthor = $this->or->creator()->get('name', Lang::txt('COM_WIKI_UNKNOWN'));
-$drauthor = $this->dr->creator()->get('name', Lang::txt('COM_WIKI_UNKNOWN'));
+// Include any Scripts
+$this->js();
 ?>
 <header id="<?php echo ($this->sub) ? 'sub-content-header' : 'content-header'; ?>">
-	<h2><?php echo $this->escape($this->page->title); ?></h2>
+	<?php if (count($this->parents)) { ?>
+		<p class="wiki-crumbs">
+			<?php foreach ($this->parents as $parent) { ?>
+				<a class="wiki-crumb" href="<?php echo Route::url($parent->link()); ?>"><?php echo $parent->title; ?></a> /
+			<?php } ?>
+		</p>
+	<?php } ?>
+
+	<h2><?php echo $this->page->title; ?></h2>
+
 	<?php
 	if (!$this->page->isStatic())
 	{
-		$this->view('authors', 'pages')
+		$this->view('authors')
 			//->setBasePath($this->base_path)
 			->set('page', $this->page)
 			->display();
 	}
 	?>
+
+	<?php echo $this->page->event->afterDisplayTitle; ?>
 </header><!-- /#content-header -->
 
 <?php if (!$this->sub) { ?>
 <section class="main section">
 	<div class="aside">
 		<?php
-		$this->view('wikimenu', 'pages')
+		$this->view('wikimenu')
 			->set('option', $this->option)
 			->set('controller', $this->controller)
 			->set('page', $this->page)
@@ -74,7 +84,9 @@ $drauthor = $this->dr->creator()->get('name', Lang::txt('COM_WIKI_UNKNOWN'));
 		<?php } ?>
 
 		<?php
-		$this->view('submenu', 'pages')
+		echo $this->page->event->beforeDisplayContent;
+
+		$this->view('submenu')
 			//->setBasePath($this->base_path)
 			->set('option', $this->option)
 			->set('controller', $this->controller)
@@ -89,22 +101,22 @@ $drauthor = $this->dr->creator()->get('name', Lang::txt('COM_WIKI_UNKNOWN'));
 	<div class="section-inner">
 <?php } ?>
 
-		<div class="grid">
-			<div class="col span-half">
-				<dl class="diff-versions">
-					<dt><?php echo Lang::txt('COM_WIKI_VERSION') . ' ' . $this->or->get('version'); ?><dt>
-					<dd><?php echo Lang::txt('COM_WIKI_HISTORY_CREATED_BY', '<time datetime="' . $this->or->get('created') . '">' . $this->or->get('created') . '</time>', $this->escape($orauthor)); ?><dd>
+		<article class="wikipage">
+			<?php echo $this->revision->get('pagehtml'); ?>
 
-					<dt><?php echo Lang::txt('COM_WIKI_VERSION') . ' ' . $this->dr->get('version'); ?><dt>
-					<dd><?php echo Lang::txt('COM_WIKI_HISTORY_CREATED_BY', '<time datetime="' . $this->dr->get('created') . '">' . $this->dr->get('created') . '</time>', $this->escape($drauthor)); ?><dd>
-				</dl>
-			</div><!-- / .aside -->
-			<div class="col span-half omega">
-				<p class="diff-deletedline"><?php echo Lang::txt('COM_WIKI_HISTORY_DELETIONS'); ?></p>
-				<p class="diff-addedline"><?php echo Lang::txt('COM_WIKI_HISTORY_ADDITIONS'); ?></p>
-			</div><!-- / .subject -->
-		</div><!-- / .section -->
+			<p class="timestamp">
+				<?php echo Lang::txt('COM_WIKI_PAGE_CREATED') . ' <time datetime="' . $this->page->created() . '">'.$this->page->created('date') . '</time>, ' . Lang::txt('COM_WIKI_PAGE_LAST_MODIFIED') . ' <time datetime="' . $this->revision->created() . '">' . $this->revision->created('date') . '</time>'; ?>
+			</p>
+			<?php if ($this->page->tags('cloud')) { ?>
+				<div class="article-tags">
+					<h3><?php echo Lang::txt('COM_WIKI_PAGE_TAGS'); ?></h3>
+					<?php echo $this->page->tags('cloud'); ?>
+				</div>
+			<?php } ?>
+		</article>
 
-		<?php echo $this->content; ?>
+		<?php
+		echo $this->page->event->afterDisplayContent;
+		?>
 	</div>
-</section><!-- / .main section -->
+</section>

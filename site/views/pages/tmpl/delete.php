@@ -36,11 +36,16 @@ if (!$this->sub)
 {
 	$this->css();
 }
-
-$orauthor = $this->or->creator()->get('name', Lang::txt('COM_WIKI_UNKNOWN'));
-$drauthor = $this->dr->creator()->get('name', Lang::txt('COM_WIKI_UNKNOWN'));
 ?>
 <header id="<?php echo ($this->sub) ? 'sub-content-header' : 'content-header'; ?>">
+	<?php if (count($this->parents)) { ?>
+		<p class="wiki-crumbs">
+			<?php foreach ($this->parents as $parent) { ?>
+				<a class="wiki-crumb" href="<?php echo Route::url($parent->link()); ?>"><?php echo $parent->title; ?></a> /
+			<?php } ?>
+		</p>
+	<?php } ?>
+
 	<h2><?php echo $this->escape($this->page->title); ?></h2>
 	<?php
 	if (!$this->page->isStatic())
@@ -57,7 +62,7 @@ $drauthor = $this->dr->creator()->get('name', Lang::txt('COM_WIKI_UNKNOWN'));
 <section class="main section">
 	<div class="aside">
 		<?php
-		$this->view('wikimenu', 'pages')
+		$this->view('wikimenu')
 			->set('option', $this->option)
 			->set('controller', $this->controller)
 			->set('page', $this->page)
@@ -89,22 +94,37 @@ $drauthor = $this->dr->creator()->get('name', Lang::txt('COM_WIKI_UNKNOWN'));
 	<div class="section-inner">
 <?php } ?>
 
-		<div class="grid">
-			<div class="col span-half">
-				<dl class="diff-versions">
-					<dt><?php echo Lang::txt('COM_WIKI_VERSION') . ' ' . $this->or->get('version'); ?><dt>
-					<dd><?php echo Lang::txt('COM_WIKI_HISTORY_CREATED_BY', '<time datetime="' . $this->or->get('created') . '">' . $this->or->get('created') . '</time>', $this->escape($orauthor)); ?><dd>
+	<?php if ($this->page->isLocked() && !$this->page->access('manage')) { ?>
+		<p class="warning"><?php echo Lang::txt('COM_WIKI_WARNING_NOT_AUTH_EDITOR'); ?></p>
+	<?php } else { ?>
+		<form action="<?php echo Route::url($this->page->link('base')); ?>" method="post" id="hubForm" class="full">
+			<fieldset>
+				<legend><?php echo Lang::txt('COM_WIKI_DELETE_PAGE'); ?></legend>
 
-					<dt><?php echo Lang::txt('COM_WIKI_VERSION') . ' ' . $this->dr->get('version'); ?><dt>
-					<dd><?php echo Lang::txt('COM_WIKI_HISTORY_CREATED_BY', '<time datetime="' . $this->dr->get('created') . '">' . $this->dr->get('created') . '</time>', $this->escape($drauthor)); ?><dd>
-				</dl>
-			</div><!-- / .aside -->
-			<div class="col span-half omega">
-				<p class="diff-deletedline"><?php echo Lang::txt('COM_WIKI_HISTORY_DELETIONS'); ?></p>
-				<p class="diff-addedline"><?php echo Lang::txt('COM_WIKI_HISTORY_ADDITIONS'); ?></p>
-			</div><!-- / .subject -->
-		</div><!-- / .section -->
+				<label for="confirm-delete">
+					<input class="option" type="checkbox" name="confirm" id="confirm-delete" value="1" />
+					<?php echo Lang::txt('COM_WIKI_FIELD_CONFIRM_DELETE'); ?>
+				</label>
 
-		<?php echo $this->content; ?>
+				<p class="warning">
+					<?php echo Lang::txt('COM_WIKI_FIELD_CONFIRM_DELETE_HINT'); ?>
+				</p>
+
+				<input type="hidden" name="pagename" value="<?php echo $this->escape(($this->page->get('path') ? $this->page->get('path') . '/' : '') . $this->page->get('pagename')); ?>" />
+				<input type="hidden" name="page_id" value="<?php echo $this->escape($this->page->get('id')); ?>" />
+
+				<?php foreach ($this->page->adapter()->routing('delete') as $name => $val) { ?>
+					<input type="hidden" name="<?php echo $this->escape($name); ?>" value="<?php echo $this->escape($val); ?>" />
+				<?php } ?>
+
+				<?php echo Html::input('token'); ?>
+			</fieldset>
+
+			<p class="submit">
+				<input type="submit" class="btn btn-danger" value="<?php echo Lang::txt('COM_WIKI_DELETE'); ?>" />
+			</p>
+		</form>
+	<?php } ?>
+
 	</div>
 </section><!-- / .main section -->
