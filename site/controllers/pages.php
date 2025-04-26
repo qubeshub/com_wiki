@@ -7,7 +7,9 @@
 
 namespace Components\Wiki\Site\Controllers;
 
-use Hubzero\Component\SiteController;
+require_once PATH_APP . DS . 'libraries' . DS . 'Qubeshub' . DS . 'Component' . DS . 'SiteController.php';
+
+use Qubeshub\Component\SiteController;
 use Components\Wiki\Models\Book;
 use Components\Wiki\Models\Page;
 use Components\Wiki\Models\Version;
@@ -354,6 +356,21 @@ class Pages extends SiteController
 			$this->page->set('parent', $parent->get('id'));
 		}
 
+		$parents = array();
+
+		if ($this->page->get('parent'))
+		{
+			$parents = $this->page->ancestors();
+
+			foreach ($parents as $p)
+			{
+				Pathway::append(
+					$p->get('title'),
+					$p->link()
+				);
+			}
+		}
+
 		// Get the most recent version for editing
 		if (!is_object($revision))
 		{
@@ -462,6 +479,7 @@ class Pages extends SiteController
 			->set('tree', $tree)
 			->set('tags', $tags)
 			->set('preview', $this->preview)
+			->set('parents', $parents)
 			->set('base_path', $this->_base_path)
 			->setErrors($this->getErrors())
 			->setLayout('edit')
