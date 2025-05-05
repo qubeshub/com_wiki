@@ -199,5 +199,22 @@ jQuery(document).ready(function(jq){
 			});
 		}
 	}
+
+	// Handles TOC expand/collapse buttons
+	document.querySelectorAll('.toggle-button').forEach(button => {
+		const sublist = button.closest('li').querySelector('ul');
+
+		// Hide button if there's no submenu
+		if (!sublist) {
+		  button.style.visibility = 'hidden'; // Or button.remove(); if you want to remove it entirely
+		  return;
+		}
+
+		button.addEventListener('click', () => {
+		  const expanded = button.getAttribute('aria-expanded') === 'true';
+		  button.setAttribute('aria-expanded', String(!expanded));
+		  sublist.style.display = expanded ? 'none' : 'block';
+		});
+	  });
 });
 

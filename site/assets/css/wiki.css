@@ -1034,3 +1034,49 @@
 		margin-right: 1em;
 		flex: 1 0 1;
 	}
+
+	.aside .container ul.toc-list {
+		padding: 0 0 0.25em 0;
+	}
+
+	.article-toc li ul {
+		display: none;
+	}
+
+	.toc-item {
+		position: relative;
+  		/* padding-left: 0.25em; /* space for the caret */
+  		display: flex;
+  		align-items: center;
+	}
+
+	.toggle-button {
+		position: absolute;
+		left: -1.25em;
+		top: 50%;
+		transform: translateY(-50%);
+		background: none;
+		border: none;
+		cursor: pointer;
+		font-size: 0.8em;
+		width: 1em;
+		height: 1em;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: transform 0.3s ease;
+	}
+
+	.toggle-button::before {
+		content: '▶'; /* Always show closed caret shape */
+		display: inline-block;
+		transition: transform 0.2s ease;
+	}
+
+	.toggle-button[aria-expanded="true"]::before {
+		transform: rotate(90deg); /* Rotates caret to point down */
+	}
+
+	button:not(:has(+ ul)) {
+		display: none;
+	}

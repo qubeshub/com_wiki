@@ -15,6 +15,8 @@ if (!isset($this->controller))
 	$this->controller = Request::getWord('controller', 'page');
 }
 
+$isAdmin = (\User::authorise('core.manage', 'com_wiki') ? true : false);
+
 if ($tmpl != 'component' && $this->sub) { ?>
 	<div id="sub-content-header-extra">
 		<ul id="page_options">
@@ -59,7 +61,7 @@ if ($tmpl != 'component' && $this->sub) { ?>
 	</li>
 	<?php if ($tmpl != 'component') { ?>
 		<?php if ($this->page->exists() && !$this->page->isDeleted() && $this->page->getNamespace() != 'special') { ?>
-			<?php if ((($this->page->isLocked() && $this->page->access('manage')) || (!$this->page->isLocked() && $this->page->access('edit'))) && $this->page->getNamespace() != 'help') { ?>
+			<?php if ((($this->page->isLocked() && $this->page->access('manage')) || (!$this->page->isLocked() && $this->page->access('edit'))) && ($this->page->getNamespace() != 'help' || $isAdmin)) { ?>
 				<li class="page-edit<?php if ($this->controller == 'pages' && in_array($this->task, array('edit', 'preview', 'save'))) { echo ' active'; } ?>">
 					<a href="<?php echo Route::url($this->page->link('edit')); ?>" title="<?php echo Lang::txt('COM_WIKI_TAB_EDIT'); ?>">
 						<span class="icon-pencil"><?php echo Lang::txt('COM_WIKI_TAB_EDIT'); ?></span>
@@ -86,8 +88,8 @@ if ($tmpl != 'component' && $this->sub) { ?>
 				</li>
 			<?php } ?>
 			<?php
-				if (($this->page->isLocked() && $this->page->access('manage', 'page'))
-					|| (!$this->page->isLocked() && $this->page->access('delete', 'page'))) { ?>
+				if ((($this->page->isLocked() && $this->page->access('manage', 'page'))
+					|| (!$this->page->isLocked() && $this->page->access('delete', 'page'))) && ($this->page->getNamespace() != 'help' || $isAdmin)) { ?>
 				<li class="page-delete<?php if ($this->controller == 'pages' && $this->task == 'delete') { echo ' active'; } ?>">
 					<a href="<?php echo Route::url($this->page->link('delete')); ?>" title="<?php echo Lang::txt('COM_WIKI_DELETE_PAGE'); ?>">
 						<span class="icon-remove-sign"><?php echo Lang::txt('COM_WIKI_DELETE_PAGE'); ?></span>

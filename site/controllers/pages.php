@@ -155,6 +155,7 @@ class Pages extends SiteController
 				->set('page', $this->page)
 				->set('book', $this->book)
 				->set('sub', $this->sub)
+				->set('base_path', $this->_base_path)
 				->display();
 			return;
 		}
@@ -171,6 +172,7 @@ class Pages extends SiteController
 				->set('page', $this->page)
 				->set('book', $this->book)
 				->set('sub', $this->sub)
+				->set('base_path', $this->_base_path)
 				->setLayout('doesnotexist')
 				->display();
 			return;
@@ -228,6 +230,7 @@ class Pages extends SiteController
 				->set('version', ($version ? $version : $this->page->get('version_id')))
 				->set('book', $this->book)
 				->set('sub', $this->sub)
+				->set('base_path', $this->_base_path)
 				->setLayout('nosuchrevision')
 				->display();
 			return;
@@ -312,8 +315,9 @@ class Pages extends SiteController
 			);
 		}
 
+		$isAdmin = (\User::authorise('core.edit', 'com_wiki') ? true : false);
 		// make help pages noneditable
-		if ($this->page->getNamespace() == 'help')
+		if ($this->page->getNamespace() == 'help' && !$isAdmin)
 		{
 			App::redirect(
 				Route::url($this->page->link()),
@@ -751,8 +755,9 @@ class Pages extends SiteController
 			);
 		}
 
+		$isAdmin = (\User::authorise('core.delete', 'com_wiki') ? true : false);
 		// Make sure they're authorized to delete
-		if (!$this->page->access('delete'))
+		if (!$this->page->access('delete') || ($this->page->getNamespace() == 'help' && !$isAdmin))
 		{
 			App::redirect(
 				Route::url($this->page->link('base')),
@@ -1070,6 +1075,7 @@ class Pages extends SiteController
 				->set('page', $this->page)
 				->set('version', $version)
 				->set('sub', $this->sub)
+				->set('base_path', $this->_base_path)
 				->setLayout('nosuchrevision')
 				->display();
 			return;
