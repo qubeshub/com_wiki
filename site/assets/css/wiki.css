@@ -1053,7 +1053,7 @@
 	.toggle-button {
 		position: absolute;
 		left: -1.25em;
-		top: 50%;
+		top: 1.4em;
 		transform: translateY(-50%);
 		background: none;
 		border: none;
