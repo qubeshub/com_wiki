@@ -173,7 +173,7 @@ $authors = implode(', ', $authors);
 
 											$tplate = strtolower(Request::getString('tplate', ''));
 
-											foreach ($this->book->templates()->rows() as $template)
+											foreach ($this->book->templates(['state' => 1])->rows() as $template)
 											{
 												$tmpltags = $template->tags('string');
 												if ($tplate == strtolower($template->get('pagename')))
