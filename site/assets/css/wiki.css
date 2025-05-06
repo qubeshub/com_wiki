@@ -1050,31 +1050,41 @@
   		align-items: center;
 	}
 
-	.toggle-button {
+	.toc-item .toggle-button {
 		position: absolute;
-		left: -1.25em;
-		top: 1.4em;
-		transform: translateY(-50%);
+		left: -2em;
+		color: #000;
 		background: none;
 		border: none;
 		cursor: pointer;
-		font-size: 0.8em;
-		width: 1em;
-		height: 1em;
+		font-size: 1em;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		transition: transform 0.3s ease;
 	}
 
-	.toggle-button::before {
-		content: '▶'; /* Always show closed caret shape */
+	.toc-item .toggle-button::before {
+		font-family: 'Fontcons';
+		content: '\f0da'; /* Always show closed caret shape */
 		display: inline-block;
 		transition: transform 0.2s ease;
 	}
 
-	.toggle-button[aria-expanded="true"]::before {
+	.toc-item .toggle-button[aria-expanded="true"]::before {
 		transform: rotate(90deg); /* Rotates caret to point down */
+	}
+
+	.toc-item .tocnumber {
+		display: none;
+	}
+
+	.wikipage .macro-toc .toc-list {
+		padding: 0.4em 0.4em 0.4em 0.8em;
+	}
+
+	.wikipage .macro-toc > .toc-list {
+		padding-left: 1em;
 	}
 
 	button:not(:has(+ ul)) {
