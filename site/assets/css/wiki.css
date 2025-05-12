@@ -595,7 +595,6 @@
 	.wikipage .article-toc ul ul {
 		max-height: none;
 		border: none;
-		margin: 0 0 0 1em;
 		padding: 0;
 	}
 	.wikipage .article-toc li {
@@ -1036,7 +1035,7 @@
 	}
 
 	.aside .container ul.toc-list {
-		padding: 0 0 0.25em 0;
+		padding: 0 0 0.25em 1em;
 	}
 
 	.article-toc li ul {
@@ -1081,7 +1080,7 @@
 	}
 
 	.wikipage .macro-toc .toc-list {
-		padding: 0.4em 0.4em 0.4em 0.8em;
+		padding: 0 0 0.25em 1em;
 	}
 
 	.wikipage .macro-toc > .toc-list {
