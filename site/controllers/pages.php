@@ -482,6 +482,7 @@ class Pages extends SiteController
 			->set('sub', $this->sub)
 			->set('tree', $tree)
 			->set('tags', $tags)
+			->set('task', $this->_task) // Need this for preview (will be save instead of edit if not set directly here)
 			->set('preview', $this->preview)
 			->set('parents', $parents)
 			->set('base_path', $this->_base_path)
@@ -886,7 +887,7 @@ class Pages extends SiteController
 		}
 
 		// Make sure they're authorized to delete
-		if (!$this->page->access('edit'))
+		if (!$this->page->access('edit') || ($this->page->get('pagename') == 'MainPage'))
 		{
 			App::redirect(
 				Route::url($this->page->link('base')),

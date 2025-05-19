@@ -129,7 +129,7 @@ $authors = implode(', ', $authors);
 			<div id="file-uploader-list"></div>
 		</div>
 	<?php } else {*/ ?>
-					<?php if ($this->page->exists() && $this->page->access('edit')) { ?>
+					<?php if ($this->page->exists() && $this->page->access('edit') && ($this->page->get('pagename') != 'MainPage')) { ?>
                         <p><?php echo Lang::txt('COM_WIKI_WARNING_TO_CHANGE_PAGENAME', Route::url($this->page->link('rename'))); ?></p>
 					<?php } ?>
 					<?php //} ?>
