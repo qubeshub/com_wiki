@@ -141,7 +141,7 @@ class Page extends Relational
 	 * @param   string  $pagename  Name to get namespace from
 	 * @return  string
 	 */
-	public function getNamespace($pagename=null)
+	public function getNamespace($pagename='')
 	{
 		if (is_null($pagename))
 		{

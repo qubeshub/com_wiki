@@ -43,7 +43,7 @@ Html::behavior('tooltip');
 		<thead>
 			<tr>
 				<th colspan="7">
-					(<?php echo $this->escape(stripslashes($this->page->get('pagename'))); ?>) &nbsp; <?php echo $this->escape(stripslashes($this->page->title)); ?>
+					(<?php echo $this->escape(stripslashes($this->page->get('pagename',null))); ?>) &nbsp; <?php echo $this->escape(stripslashes($this->page->title == null ? '' : $this->page->title)); ?>
 				</th>
 			</tr>
 			<tr>

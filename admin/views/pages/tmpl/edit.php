@@ -37,31 +37,31 @@ $this->js();
 
 				<div class="input-wrap">
 					<label for="pagetitle"><?php echo Lang::txt('COM_WIKI_FIELD_TITLE'); ?>: <span class="required"><?php echo Lang::txt('JOPTION_REQUIRED'); ?></span></label><br />
-					<input type="text" name="page[title]" id="pagetitle" class="required" size="30" maxlength="255" value="<?php echo $this->escape(stripslashes($this->row->get('title'))); ?>" />
+					<input type="text" name="page[title]" id="pagetitle" class="required" size="30" maxlength="255" value="<?php echo $this->escape(stripslashes($this->row->get('title',''))); ?>" />
 				</div>
 
 				<div class="input-wrap" data-hint="<?php echo Lang::txt('COM_WIKI_FIELD_PAGENAME_HINT'); ?>">
 					<label for="pagename"><?php echo Lang::txt('COM_WIKI_FIELD_PAGENAME'); ?>: <span class="required"><?php echo Lang::txt('JOPTION_REQUIRED'); ?></span></label><br />
-					<input type="text" name="page[pagename]" id="pagename" class="required" size="30" maxlength="255" value="<?php echo $this->escape(stripslashes($this->row->get('pagename'))); ?>" />
+					<input type="text" name="page[pagename]" id="pagename" class="required" size="30" maxlength="255" value="<?php echo $this->escape(stripslashes($this->row->get('pagename',''))); ?>" />
 					<span class="hint"><?php echo Lang::txt('COM_WIKI_FIELD_PAGENAME_HINT'); ?></span>
 				</div>
 
 				<div class="input-wrap">
 					<label for="field-path"><?php echo Lang::txt('COM_WIKI_FIELD_PATH'); ?>:</label><br />
-					<input type="text" name="page[path]" id="field-path" size="30" maxlength="255" value="<?php echo $this->escape(stripslashes($this->row->get('path'))); ?>" />
+					<input type="text" name="page[path]" id="field-path" size="30" maxlength="255" value="<?php echo $this->escape(stripslashes($this->row->get('path',''))); ?>" />
 				</div>
 
 				<div class="grid">
 					<div class="col span6">
 						<div class="input-wrap">
 							<label for="field-scope"><?php echo Lang::txt('COM_WIKI_FIELD_SCOPE'); ?>:</label><br />
-							<input type="text" name="page[scope]" id="field-scope" size="30" maxlength="255" value="<?php echo $this->escape(stripslashes($this->row->get('scope'))); ?>" />
+							<input type="text" name="page[scope]" id="field-scope" size="30" maxlength="255" value="<?php echo $this->escape(stripslashes($this->row->get('scope',''))); ?>" />
 						</div>
 					</div>
 					<div class="col span6">
 						<div class="input-wrap">
 							<label for="field-scope_id"><?php echo Lang::txt('COM_WIKI_FIELD_SCOPE_ID'); ?>:</label><br />
-							<input type="text" name="page[scope_id]" id="field-scope_id" size="30" maxlength="255" value="<?php echo $this->escape(stripslashes($this->row->get('scope_id'))); ?>" />
+							<input type="text" name="page[scope_id]" id="field-scope_id" size="30" maxlength="255" value="<?php echo $this->escape(stripslashes($this->row->get('scope_id',''))); ?>" />
 						</div>
 					</div>
 				</div>

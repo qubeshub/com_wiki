@@ -37,12 +37,12 @@ $this->js();
 
 				<div class="input-wrap">
 					<label for="field-summary"><?php echo Lang::txt('COM_WIKI_FIELD_EDIT_SUMMARY'); ?>:</label><br />
-					<input type="text" name="revision[summary]" id="field-summary" size="55" maxlength="255" value="<?php echo $this->escape(stripslashes($this->row->get('summary'))); ?>" />
+					<input type="text" name="revision[summary]" id="field-summary" size="55" maxlength="255" value="<?php echo $this->escape(stripslashes($this->row->get('summary',''))); ?>" />
 				</div>
 
 				<div class="input-wrap">
 					<label for="field-pagetext"><?php echo Lang::txt('COM_WIKI_FIELD_TEXT'); ?>:</label><br />
-					<textarea name="revision[pagetext]" id="field-pagetext" cols="50" rows="40"><?php echo $this->escape(stripslashes($this->row->get('pagetext'))); ?></textarea>
+					<textarea name="revision[pagetext]" id="field-pagetext" cols="50" rows="40"><?php echo $this->escape(stripslashes($this->row->get('pagetext',''))); ?></textarea>
 				</div>
 			</fieldset>
 		</div>

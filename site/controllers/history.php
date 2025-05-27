@@ -209,8 +209,8 @@ class History extends SiteController
 		$dr = $this->page->versions()->whereEquals('version', $diff)->row();
 
 		// Diff the two versions
-		$ota = explode("\n", $or->get('pagetext'));
-		$nta = explode("\n", $dr->get('pagetext'));
+		$ota = explode("\n", $or->get('pagetext',''));
+		$nta = explode("\n", $dr->get('pagetext',''));
 
 		$formatter = new \TableDiffFormatter();
 		$result = $formatter->format(new \Diff($ota, $nta));

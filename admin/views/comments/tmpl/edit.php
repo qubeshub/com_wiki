@@ -42,7 +42,7 @@ $this->js();
 
 				<div class="input-wrap">
 					<label for="field-ctext"><?php echo Lang::txt('COM_WIKI_FIELD_CONTENT'); ?> <span class="required"><?php echo Lang::txt('JOPTION_REQUIRED'); ?></span></label><br />
-					<textarea name="fields[ctext]" id="field-ctext" class="required" cols="35" rows="15"><?php echo $this->escape(stripslashes($this->row->get('ctext'))); ?></textarea>
+					<textarea name="fields[ctext]" id="field-ctext" class="required" cols="35" rows="15"><?php echo $this->escape(stripslashes( $this->row->get('ctext',''))); ?></textarea>
 				</div>
 			</fieldset>
 		</div>
