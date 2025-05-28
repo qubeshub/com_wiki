@@ -35,6 +35,12 @@ class _DiffEngine
 	 * Description for 'AX_XREF_LENGTH'
 	 */
 	const MAX_XREF_LENGTH =  10000;
+	var $xchanged = null;
+	var $ychanged = null;
+	var $yv = null;
+	var $xv = null;
+	var $yind = null;
+	var $xind = null;
 
 	/**
 	 * Short description for 'diff'
