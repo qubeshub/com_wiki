@@ -42,6 +42,8 @@ class _DiffEngine
 	var $yind = null;
 	var $xind = null;
         var $in_seq = null;
+	var $seq = null;
+	var $lcs = null;
 
 	/**
 	 * Short description for 'diff'
