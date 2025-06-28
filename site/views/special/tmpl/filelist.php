@@ -121,7 +121,7 @@ $altdir = ($dir == 'ASC') ? 'DESC' : 'ASC';
 							<?php echo $name; ?>
 						</td>
 						<td>
-							<span><?php echo $this->escape(stripslashes($row->get('description'))); ?></span>
+							<span><?php echo $this->escape(stripslashes($row->get('description',''))); ?></span>
 						</td>
 					</tr>
 					<?php
