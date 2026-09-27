@@ -315,7 +315,17 @@ class Pages extends SiteController
 			);
 		}
 
-		$isAdmin = (\User::authorise('core.edit', 'com_wiki') ? true : false);
+		// Check if the page can be edited. access('edit') already encodes
+		// ownership (core.edit, or the creator via core.edit.own).
+		if (!$this->page->access('edit') && !$this->page->access('manage'))
+		{
+			App::redirect(
+				Route::url($this->page->link()),
+				Lang::txt('COM_WIKI_ERROR_NOTAUTH'),
+				'error'
+			);
+		}
+
 		// make help pages noneditable
 		if ($this->page->getNamespace() == 'help' && !$isAdmin)
 		{
@@ -755,10 +765,9 @@ class Pages extends SiteController
 				'error'
 			);
 		}
-
-		$isAdmin = (\User::authorise('core.delete', 'com_wiki') ? true : false);
-		// Make sure they're authorized to delete
-		if (!$this->page->access('delete') || ($this->page->getNamespace() == 'help' && !$isAdmin))
+		// Make sure they're authorized to delete. access('delete') already
+		// encodes ownership via the ACL.
+		if (!$this->page->access('delete') && !$this->page->access('manage'))
 		{
 			App::redirect(
 				Route::url($this->page->link('base')),
