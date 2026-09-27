@@ -53,6 +53,7 @@ if ($tmpl != 'component' && $this->sub) { ?>
 	</div><!-- / #content-header-extra -->
 <?php } ?>
 
+<nav aria-label="<?php echo Lang::txt('COM_WIKI_PAGE_MENU'); ?>">
 <ul class="sub-menu">
 	<li class="page-text<?php if ($this->controller == 'pages' && ($this->task == 'display' || !$this->task)) { echo ' active'; } ?>">
 		<a href="<?php echo Route::url($this->page->link()); ?>">
@@ -99,3 +100,4 @@ if ($tmpl != 'component' && $this->sub) { ?>
 		<?php } ?>
 	<?php } ?>
 </ul>
+</nav>
