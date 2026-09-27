@@ -105,14 +105,6 @@ class Parser extends Obj
 		}
 	}
 
-	public function toc($text, $config)
-	{
-		$this->load(array(), $config, true);
-		$parser = $this->parser->onGetWikiParser($config, true);
-
-		return $parser->toc($text, true);
-	}
-
 	/**
 	 * Build a standalone table of contents for already-parsed page HTML
 	 *
