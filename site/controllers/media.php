@@ -21,6 +21,7 @@ use User;
 use Lang;
 use Date;
 use App;
+use Component;
 
 /**
  * Wiki controller class for media
