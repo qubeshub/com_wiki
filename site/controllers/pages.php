@@ -837,7 +837,7 @@ class Pages extends SiteController
 				$this->page->set('modified', $revision->get('created'));
 			}
 		}
-		else
+		else if (!$suggestOnly)
 		{
 			$this->page->set('modified', Date::toSql());
 		}
@@ -853,6 +853,15 @@ class Pages extends SiteController
 		if (!$suggestOnly)
 		{
 			$this->page->tag(Request::getString('tags', ''));
+		}
+
+		if ($suggestOnly)
+		{
+			// a suggestion changed no page content: nothing to announce or log
+			App::redirect(
+				Route::url($this->page->link())
+			);
+			return;
 		}
 
 		// Trigger after save event
