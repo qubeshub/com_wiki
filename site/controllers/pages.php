@@ -7,9 +7,7 @@
 
 namespace Components\Wiki\Site\Controllers;
 
-require_once PATH_APP . DS . 'libraries' . DS . 'Qubeshub' . DS . 'Component' . DS . 'SiteController.php';
-
-use Qubeshub\Component\SiteController;
+use Hubzero\Component\SiteController;
 use Components\Wiki\Models\Book;
 use Components\Wiki\Models\Page;
 use Components\Wiki\Models\Version;
